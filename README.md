@@ -11,5 +11,4 @@
 
 # Running the app
   
-    python main.py
-    
+  not there yet

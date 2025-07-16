@@ -1,3 +1,4 @@
 playwright
 selenium
 webdriver-manager
+pandas

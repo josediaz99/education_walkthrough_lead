@@ -1,5 +1,7 @@
 playwright
-selenium
-webdriver-manager
 pandas
 xlrd
+requests
+beutifulsoup4
+os
+from urllib.robotparser import RobotFileParser

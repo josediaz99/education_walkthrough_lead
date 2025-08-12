@@ -22,37 +22,51 @@ def can_scrape(url):
     try:
         parsed_url = urlparse(url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-
-        #get to the robots.txt file if it exists
         robots_url = urljoin(base_url, '/robots.txt')
-        response = requests.get(robots_url,timeout=5)
 
-        #if there isnt a page then we return True with an empty list 
+        response = requests.get(robots_url, timeout=5)
         if response.status_code == 404:
-            print("there is no robots.txt file")
-            return True,[]
-        
-        #check what we cannot scrape
+            print("No robots.txt file found.")
+            return True, []
+
         disallowed_paths = []
-        lines = response.text.splitlines()
-        for line in lines:
+        applies = False
+
+        for line in response.text.splitlines():
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
+
             if line.lower().startswith("user-agent:"):
-                current_user_agent = line.split(":", 1)[1].strip()
-                applies_to_us = current_user_agent == "*"
-            elif applies_to_us and line.lower().startswith("disallow:"):
+                agent = line.split(":", 1)[1].strip()
+                applies = (agent == "*")
+            elif applies and line.lower().startswith("disallow:"):
                 path = line.split(":", 1)[1].strip()
                 if path:
                     disallowed_paths.append(path)
+            elif line.lower().startswith("user-agent:") and applies:
+                # Reached a new user-agent, stop recording
+                applies = False
 
         rp = urllib.robotparser.RobotFileParser()
         rp.set_url(robots_url)
         rp.read()
+
         is_allowed = rp.can_fetch("*", url)
 
         return is_allowed, disallowed_paths
-    
+
     except Exception as e:
-        return True,[]
+        print(f"Error reading robots.txt: {e}")
+        return True, []
+
+
+
+if __name__ == "__main__":
+    # Example usage
+    url = "https://www.youtube.com"
+    allowed, non_paths = can_scrape(url)
+    if allowed:
+        print(f"Scraping is allowed for {url}. blocked paths: {non_paths}")
+    else:
+        print(f"Scraping is not allowed for {url}")

@@ -1,25 +1,12 @@
-import requests
-import pandas as pd
-from scrape_validation import can_scrape
 import os
 import asyncio
+import requests
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
 load_dotenv()
 OLLAMA_URL = os.getenv("OLLAMA_URL")
 MODEL_NAME = os.getenv("MODEL_NAME")
-
-def school_district_scrape(url):
-    '''
-    function scraped school district websites
-
-    returns:
-    
-    '''
-    if can_scrape(url):
-        asyncio.run(scrape_with_agent())
-
 
 def ask_ollama(prompt):
     response = requests.post(
@@ -33,12 +20,13 @@ def ask_ollama(prompt):
     )
     return response.json()["response"]
 
-async def scrape_with_agent(url):
+async def scrape_with_agent():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
         page = await browser.new_page()
         
-        await page.goto(url)
+        search_url = "https://www.maywood89.org/"
+        await page.goto(search_url)
 
         print("Page title:", await page.title())
         content = await page.content()
@@ -50,13 +38,4 @@ async def scrape_with_agent(url):
 
         await browser.close()
 
-
-
-
-
-if __name__ == "__main__":
-    tempUrl = "http://www.kcsd96.org"
-    district_Html = school_district_scrape(tempUrl)
-
-
-
+asyncio.run(scrape_with_agent())

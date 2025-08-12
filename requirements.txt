@@ -5,3 +5,4 @@ requests
 beutifulsoup4
 os
 from urllib.robotparser import RobotFileParser
+playwrright openai python-dotenv

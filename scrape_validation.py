@@ -4,10 +4,8 @@ general function to check for user permissions ot scrape a website based on the 
 
 import requests
 from urllib.parse import urljoin, urlparse
-import urllib.robotparser
 
-
-def can_scrape(url):
+def get_blocked_urls(url):
     '''
     function takes in a url which checks if the user has persmission to scrape the website based on the robots.txt file and returns a list of urls which are not allowed to be scraped
 
@@ -25,11 +23,11 @@ def can_scrape(url):
         robots_url = urljoin(base_url, '/robots.txt')
 
         response = requests.get(robots_url, timeout=5)
-        if response.status_code == 404:
+        if response.status_code != 200:
             print("No robots.txt file found.")
-            return True, []
+            return []
 
-        disallowed_paths = []
+        blocked_paths = []
         applies = False
 
         for line in response.text.splitlines():
@@ -43,30 +41,19 @@ def can_scrape(url):
             elif applies and line.lower().startswith("disallow:"):
                 path = line.split(":", 1)[1].strip()
                 if path:
-                    disallowed_paths.append(path)
-            elif line.lower().startswith("user-agent:") and applies:
-                # Reached a new user-agent, stop recording
-                applies = False
+                    blocked_paths.append(path)
+            
 
-        rp = urllib.robotparser.RobotFileParser()
-        rp.set_url(robots_url)
-        rp.read()
-
-        is_allowed = rp.can_fetch("*", url)
-
-        return is_allowed, disallowed_paths
+        return blocked_paths
 
     except Exception as e:
         print(f"Error reading robots.txt: {e}")
-        return True, []
+        return []
 
 
 
 if __name__ == "__main__":
     # Example usage
     url = "https://www.youtube.com"
-    allowed, non_paths = can_scrape(url)
-    if allowed:
-        print(f"Scraping is allowed for {url}. blocked paths: {non_paths}")
-    else:
-        print(f"Scraping is not allowed for {url}")
+    blocked = get_blocked_urls(url)
+    print(f"Blocked paths for {url}: {blocked}")

@@ -1,8 +1,11 @@
 import requests
 import pandas as pd
-from scrape_validation import can_scrape
+from scrape_validation import get_blocked_urls
 import os
 import asyncio
+import re
+import time
+from collections import deque
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
@@ -12,51 +15,56 @@ MODEL_NAME = os.getenv("MODEL_NAME")
 
 def school_district_scrape(url):
     '''
-    function scraped school district websites
+    function scrapes school district websites to find board meeting minutes improvement plans and other relavent documents
 
     returns:
     
     '''
-    if can_scrape(url):
-        asyncio.run(scrape_with_agent())
+    blocked = None
+    docs = []
+    docs = initial_scrape(url)
+    if docs is None:
+        print("No documents found in initial search.")
+        blocked = get_blocked_urls(url)
+        if blocked is not None:
+            print("Blocked URLs:", blocked)
+        else:
+            print("No blocked URLs found.")
+        district_web_scraper(url,blocked)
+
+    
 
 
-def ask_ollama(prompt):
-    response = requests.post(
-        f"{OLLAMA_URL}/api/generate",
-        headers={"Content-Type": "application/json"},
-        json={
-            "model": MODEL_NAME,
-            "prompt": prompt,
-            "stream": False
-        }
-    )
-    return response.json()["response"]
+def initial_scrape(url):
+    '''
+    function saerches for school district with common tags to search for improvement plans
 
-async def scrape_with_agent(url):
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
-        page = await browser.new_page()
-        
-        await page.goto(url)
+    returns:improvement plan
+    
+    '''
 
-        print("Page title:", await page.title())
-        content = await page.content()
-        print("Page content snippet:", content[:500])
+def district_web_scraper(url,blocked):
+    '''
+    function scrapes school district websites to find board meeting minutes improvement plans and other relavent documents
 
-        # Ask the LLM what to do next based on the page content
-        llm_response = ask_ollama(f"I see this page content:\n\n{content}\n\nWhat link should I click to find board meeting minutes?")
-        print("\n[LLM Suggestion]:", llm_response)
+    returns:
+    
+    '''
+    docs = []
+    docs = initial_scrape(url)
+    if docs is None:
+        pass
 
-        await browser.close()
-
-
+    return
 
 
 
 if __name__ == "__main__":
-    tempUrl = "http://www.kcsd96.org"
-    district_Html = school_district_scrape(tempUrl)
+    tempUrl = "https://www.maywood89.org/"
+    
+
+    school_district_scrape(tempUrl)
+    
 
 
 

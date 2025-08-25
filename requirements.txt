@@ -3,3 +3,6 @@ selenium
 webdriver-manager
 pandas
 xlrd
+flask
+flask-login
+flask-sqlalchemy

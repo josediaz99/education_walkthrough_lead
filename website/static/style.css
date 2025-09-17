@@ -1,0 +1,64 @@
+/* Base */
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #f8fafc;
+  color: #111827;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* List layout */
+.result-list { list-style: none; margin: 0; padding: 0; }
+.result-card {
+  position: relative;                    /* needed for stretched link */
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+  transition: box-shadow .12s ease, border-color .12s ease;
+}
+.result-card + .result-card { margin-top: 12px; }
+.result-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.06); border-color:#d1d5db; }
+
+/* Full-card clickable overlay */
+.stretched-link {
+  position: absolute;
+  inset: 0;                              /* top/right/bottom/left: 0 */
+  border-radius: inherit;
+  z-index: 1;                            /* sits under the pills */
+  text-indent: -9999px;                  /* hide text visually (alt to sr-only) */
+  overflow: hidden;
+}
+.stretched-link:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+/* Content */
+.title { margin: 0 0 .25rem; font-weight: 600; font-size: 1.1rem; }
+.addr { margin: 0 0 .75rem; color: #6b7280; }
+address { font-style: normal; }
+
+/* Tags / pills */
+.tags { display: flex; flex-wrap: wrap; gap: .5rem; }
+.tag {
+  position: relative;                    /* raise above stretched link */
+  z-index: 2;
+  display: inline-block;
+  padding: .5rem .75rem;
+  border-radius: 10px;
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+  font-size: .9rem;
+  text-decoration: none;
+}
+.tag:hover { filter: brightness(.95); }
+.tag:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; }

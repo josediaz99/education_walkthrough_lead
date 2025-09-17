@@ -8,6 +8,12 @@ document_tag = db.Table(
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True)
 )
 
+school_tag = db.Table(
+    'school_tag',
+    db.Column('school_id', db.Integer, db.ForeignKey('school.id'), primary_key = True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key = True)
+)
+
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.String(10000))
@@ -34,7 +40,7 @@ class School(db.Model):
     email = db.Column(db.String(150), unique=True)
     website = db.Column(db.String(150))
     documents = db.relationship('Document')
-    tags = db.relationship('Tag', secondary=document_tag, backref='schools')
+    tags = db.relationship('Tag', secondary=school_tag, backref='schools')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
 class Document(db.Model):
@@ -46,5 +52,5 @@ class Document(db.Model):
 
 class Tag(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True)
+    name = db.Column(db.String(50))
     description = db.Column(db.String(150))

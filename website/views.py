@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, jsonify
 from flask_login import login_required, current_user
-from .models import Note
+from .models import Note, School, Tag
 from flask import request, flash
 from . import db
 import json
@@ -29,15 +29,19 @@ def home():
         phone_number = request.form.get('phone_number')
         email = request.form.get('email')
         website = request.form.get('website')
-        print(request.form.getlist('tags'))
 
 
         new_school = School(name=name, address=address, city=city, state=state, zip_code=zip_code, phone_number=phone_number, email=email, website=website, user_id=current_user.id)
         
 
-        for tag in request.form.getlist('tags'):
-            new_school.append(tag)
+        for tag_name in request.form.getlist('tags'):
+            # Get Tag Model that correlates with tag name
+            print(tag_name)
+            new_tag = Tag.query.filter_by(name=tag_name).first()
+            print(new_tag)
+            new_school.tags.append(new_tag)
 
+        print(new_school.tags)
         db.session.add(new_school)
         db.session.commit()
 

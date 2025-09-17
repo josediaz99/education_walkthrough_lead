@@ -19,11 +19,12 @@
                     <address class="addr">
                         {{school.address}}, {{school.city}}, {{school.state}}, {{school.zip_code}}
                     </address>
-
+                    
                     <div class="tags">
-                        <a class="tag" href="#pd">Professional Development</a>
-                        <a class="tag" href="#ddi">Data-Driven Improvement</a>
-                    </div>  
+                        {% for tag in school.tags %}
+                            <a class="tag" href="#pd">{{tag.name}}</a>
+                        {% endfor %}
+                    </div> 
                 </li>
             {% endfor %}
         </ul>
@@ -46,10 +47,10 @@
         <input type="text" id="website" name="website"><br>
         <label for="website">Tag(s):</label><br>
         <select name="tags" id="tags" multiple>
-            <option value="ib">IB</option>
-            <option value="ap">AP</option>
-            <option value="avid">AVID</option>
-            <option value="professional_development">PRofessional Development</option>
+            <option value="IB">IB</option>
+            <option value="AP">AP</option>
+            <option value="AVID">AVID</option>
+            <option value="Professional Development">Professional Development</option>
         </select>
         <br />
         <div align="center">

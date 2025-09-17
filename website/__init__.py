@@ -35,4 +35,15 @@ def create_database(app):
     if not path.exists('website/' + DB_NAME):
         with app.app_context():
             db.create_all()
+            
+            from .models import Tag
+            pd_tag = Tag(name="Professional Development")
+            ib_tag = Tag(name="IB")
+            ap_tag = Tag(name="AP")
+            avid_tag = Tag(name="AVID")
+
+            db.session.add_all([pd_tag, ib_tag, ap_tag, avid_tag])
+
+            db.session.commit()
+
         print('Created Database!')

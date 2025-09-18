@@ -30,22 +30,17 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbar">
                     <div class="navbar-nav">
-                        {% if user.is_authenticated %}
-                            <a class="nav-item nav-link" id="home" href="/">Home</a>
-                            <a class="nav-item nav-link" id="logout" href="/logout">Logout</a>
-                            <input 
-                                type="text" 
-                                class="search" 
-                                placeholder="Search" 
-                                name="query" 
-                                hx-get="/search"
-                                hx-trigger="keyup changed delay:500ms"
-                                hx-target="#results"
-                            />
-                        {% else %}
-                            <a class="nav-item nav-link" id="login" href="/login">Login</a>
-                            <a class="nav-item nav-link" id="signUp" href="/sign-up">Sign Up</a>
-                        {% endif %}
+                        <a class="nav-item nav-link" id="home" href="/">Home</a>
+                        <a class="nav-item nav-link" id="logout" href="/logout">Logout</a>
+                        <input 
+                            type="text" 
+                            class="search" 
+                            placeholder="Search" 
+                            name="query" 
+                            hx-get="/search"
+                            hx-trigger="keyup changed delay:100ms"
+                            hx-target="#results"
+                        />
                     </div>
                 </div>
             </nav>

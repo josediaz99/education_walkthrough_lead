@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, jsonify
 from flask_login import login_required, current_user
-from .models import Note, School, Tag
+from .models import School, Tag
 from flask import request, flash
 from . import db
 import json
@@ -10,7 +10,6 @@ views = Blueprint('views', __name__)
 
 
 @views.route('/', methods=['GET', 'POST'])
-@login_required
 def home():
     if request.method == 'POST':
         # note = request.form.get('note')
@@ -43,14 +42,11 @@ def home():
         db.session.commit()
 
         flash("School Added!", category='success')
-    return render_template("home.html", schools=School.query.all(), user=current_user)
+    return render_template("home.html", schools=School.query.all())
 
 @views.route('/search')
 def search():
-    print("SEARCHING...")
     query = request.args.get("query")
-    print(query)
-    print(query == "")
     if(query != ""):
         results = School.query.filter(
             School.name.ilike(f"%{query}%") | 
@@ -67,13 +63,13 @@ def search():
     print(results)
     return render_template('search_results.html', results=results)
 
-@views.route('/delete-note', methods=['POST'])
-def delete_note():
-    note = json.loads(request.data)
-    noteId = note['noteId']
-    note = Note.query.get(noteId)
-    if note:
-        if note.user_id == current_user.id:
-            db.session.delete(note)
-            db.session.commit()
-    return jsonify({})
+# @views.route('/delete-note', methods=['POST'])
+# def delete_note():
+#     note = json.loads(request.data)
+#     noteId = note['noteId']
+#     note = Note.query.get(noteId)
+#     if note:
+#         if note.user_id == current_user.id:
+#             db.session.delete(note)
+#             db.session.commit()
+#     return jsonify({})

@@ -1,0 +1,21 @@
+{% for school in results %}
+    <li class="result-card">
+        <a
+            class="stretched-link"
+            href="district.html"
+            aria-label="Open DoDEA Americas Southeast District"
+            >Open DoDEA Americas Southeast District
+        </a>
+
+        <h3 class="title">{{school.name}}</h3>
+        <address class="addr">
+            {{school.address}}, {{school.city}}, {{school.state}}, {{school.zip_code}}
+        </address>
+        
+        <div class="tags">
+            {% for tag in school.tags %}
+                <a class="tag" href="#pd">{{tag.name}}</a>
+            {% endfor %}
+        </div> 
+    </li>
+{% endfor %}

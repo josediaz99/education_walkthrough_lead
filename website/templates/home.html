@@ -3,19 +3,53 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-        <h1 align="center">Welcome, {{ user.first_name }}!</h1>
-        <h3 align="center">Notes:</h3>
-        <ul class="list-group list-group-flush" id="notes">
-            {% for note in user.notes %}
-                <li class="list-group-item"> {{ note.data }} 
-                    <button type="button" class="close" onClick="deleteNote({{ note.id }})">
-                        <span aria-hidden="true">&times;</span>
-                    </button>       
+        <ul class="result-list" id="results">
+            {% for school in schools %}
+                <li class="result-card">
+                    <a
+                        class="stretched-link"
+                        href="district.html"
+                        aria-label="Open DoDEA Americas Southeast District"
+                        >Open DoDEA Americas Southeast District
+                    </a>
+
+                    <h3 class="title">{{school.name}}</h3>
+                    <address class="addr">
+                        {{school.address}}, {{school.city}}, {{school.state}}, {{school.zip_code}}
+                    </address>
+                    
+                    <div class="tags">
+                        {% for tag in school.tags %}
+                            <a class="tag" href="#pd">{{tag.name}}</a>
+                        {% endfor %}
+                    </div> 
                 </li>
             {% endfor %}
         </ul>
     <form method="POST">
-        <textarea name="note" id="note" class="form-control"></textarea>
+        <label for="name">Name:</label><br>
+        <input type="text" id="name" name="name"><br>
+        <label for="address">Address:</label><br>
+        <input type="text" id="address" name="address"><br>
+        <label for="city">City:</label><br>
+        <input type="text" id="city" name="city"><br>
+        <label for="state">State:</label><br>
+        <input type="text" id="state" name="state"><br>
+        <label for="zip_code">Zip Code:</label><br>
+        <input type="text" id="zip_code" name="zip_code"><br>
+        <label for="phone_number">Phone Number:</label><br>
+        <input type="text" id="phone_number" name="phone_number"><br>
+        <label for="email">Email:</label><br>
+        <input type="text" id="email" name="email"><br>
+        <label for="website">Website:</label><br>
+        <input type="text" id="website" name="website"><br>
+        <label for="website">Tag(s):</label><br>
+        <select name="tags" id="tags" multiple>
+            <option value="IB">IB</option>
+            <option value="AP">AP</option>
+            <option value="AVID">AVID</option>
+            <option value="Professional Development">Professional Development</option>
+        </select>
         <br />
         <div align="center">
                 <button type="submit" class="btn btn-primary">Add Note</button>

@@ -14,6 +14,20 @@ body {
   padding: 24px;
 }
 
+/* Navbar */
+.navbar-container {
+  position: top;
+}
+  
+
+/* Search */
+.search {
+  border-radius: 20px;
+  padding-left: 20px;
+  padding-right: 20px;
+  min-width: 364px;
+}
+
 /* List layout */
 .result-list { list-style: none; margin: 0; padding: 0; }
 .result-card {

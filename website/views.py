@@ -35,10 +35,7 @@ def home():
         
 
         for tag_name in request.form.getlist('tags'):
-            # Get Tag Model that correlates with tag name
-            print(tag_name)
             new_tag = Tag.query.filter_by(name=tag_name).first()
-            print(new_tag)
             new_school.tags.append(new_tag)
 
         print(new_school.tags)
@@ -46,8 +43,29 @@ def home():
         db.session.commit()
 
         flash("School Added!", category='success')
-    return render_template("home.html", user=current_user)
+    return render_template("home.html", schools=School.query.all(), user=current_user)
 
+@views.route('/search')
+def search():
+    print("SEARCHING...")
+    query = request.args.get("query")
+    print(query)
+    print(query == "")
+    if(query != ""):
+        results = School.query.filter(
+            School.name.ilike(f"%{query}%") | 
+            School.address.ilike(f"%{query}%") | 
+            School.city.ilike(f"%{query}%") | 
+            School.state.ilike(f"%{query}%") | 
+            School.zip_code.ilike(f"%{query}%") |
+            School.phone_number.ilike(f"%{query}%") |
+            School.email.ilike(f"%{query}%") |
+            School.website.ilike(f"%{query}%")
+        ).all()
+    else:
+        results = School.query.all()
+    print(results)
+    return render_template('search_results.html', results=results)
 
 @views.route('/delete-note', methods=['POST'])
 def delete_note():

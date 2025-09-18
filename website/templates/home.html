@@ -3,10 +3,8 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
-        <h1 align="center">Welcome, {{ user.first_name }}!</h1>
-        <h3 align="center">Notes:</h3>
-        <ul class="result-list" id="notes">
-            {% for school in user.schools %}
+        <ul class="result-list" id="results">
+            {% for school in schools %}
                 <li class="result-card">
                     <a
                         class="stretched-link"

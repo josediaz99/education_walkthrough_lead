@@ -6,3 +6,8 @@ xlrd
 flask
 flask-login
 flask-sqlalchemy
+python-dotenv
+requests
+json
+dotenv
+os

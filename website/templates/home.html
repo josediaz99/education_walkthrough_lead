@@ -15,7 +15,7 @@
 
                     <h3 class="title">{{school.name}}</h3>
                     <address class="addr">
-                        {{school.address}}, {{school.city}}, {{school.state}}, {{school.zip_code}}
+                        {{school.street}}, {{school.city}}, {{school.state}}, {{school.zip_code}}
                     </address>
                     
                     <div class="tags">
@@ -27,7 +27,7 @@
             {% endfor %}
         </ul>
     <form method="POST">
-        <label for="name">Name:</label><br>
+        <!-- <label for="name">Name:</label><br>
         <input type="text" id="name" name="name"><br>
         <label for="address">Address:</label><br>
         <input type="text" id="address" name="address"><br>
@@ -50,9 +50,9 @@
             <option value="AVID">AVID</option>
             <option value="Professional Development">Professional Development</option>
         </select>
-        <br />
+        <br /> -->
         <div align="center">
-                <button type="submit" class="btn btn-primary">Add Note</button>
+            <button type="submit" class="btn btn-primary">Add Districts</button>
         </div>
     </form>
 {% endblock %}

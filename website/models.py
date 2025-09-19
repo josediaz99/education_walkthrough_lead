@@ -15,14 +15,20 @@ school_tag = db.Table(
 
 class School(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    nces_id = db.Column(db.String(10))
     name = db.Column(db.String(150))
-    address = db.Column(db.String(150))
+    street = db.Column(db.String(50))
+    county = db.Column(db.String(150))
     city = db.Column(db.String(150))
     state = db.Column(db.String(150))
     zip_code = db.Column(db.String(10))
     phone_number = db.Column(db.String(20))
-    email = db.Column(db.String(150), unique=True)
+    # fax = db.Column(db.String(20))
+    # email = db.Column(db.String(150), unique=True)
     website = db.Column(db.String(150))
+    lowGrade = db.Column(db.String(10))
+    highGrade = db.Column(db.String(10))
+    numberTotalSchools = db.Column(db.Integer)
     documents = db.relationship('Document')
     tags = db.relationship('Tag', secondary=school_tag, backref='schools')
 

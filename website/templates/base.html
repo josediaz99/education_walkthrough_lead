@@ -19,7 +19,6 @@
             type="text/css"
             href="{{ url_for('static', filename='style.css') }}"
         />
-        <script src="https://cdn.jsdelivr.net/npm/htmx.org/dist/htmx.min.js"></script>
         <title>{% block title %}Home{% endblock%}</title>
     </head>
     <body>
@@ -69,6 +68,7 @@
         <div class="container">
             {% block content %}{% endblock %}
         </div>
+        <script src="https://cdn.jsdelivr.net/npm/htmx.org/dist/htmx.min.js"></script>
         <script
             src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
             integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"

@@ -6,7 +6,7 @@ import json
 from dotenv import load_dotenv
 import os
 #------------we will make calls only to the too which will return mutiple school districts-------------------------
-url = "https://api.schooldigger.com/v2.3/districts"
+school_digger_url  = "https://api.schooldigger.com/v2.3/districts"
 
 #------------list of states in the us-------------------------
 states = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]
@@ -25,10 +25,9 @@ if not API_key:#check if we retrieved the api key and id from our .env file
     raise ValueError("No API key set for SchoolDigger API")
 else:
         print("API key successfully loaded")
-
 #------------function to get the list of school districts given a state-------------------------
 
-def get_school_districts(state) -> list[dict]:
+def get_school_districts_by_state(state) -> list[dict]:
     """this function will return a list of school district information given a state
 
     Args:
@@ -36,7 +35,7 @@ def get_school_districts(state) -> list[dict]:
     Returns:
         stateDistricts (list[dict]): lift of school district in the json format returned by the api
     """
-    important_fields = ["districtID", "districtName", "state", "countyName", "city", "zip", "phone", "fax", "website", "gradeRange", "numSchools", "studentTeacherRatio"]
+    important_fields = ["districtID", "districtName", "state", "countyName", "city", "zip", "phone", "fax", "website", "gradeRange", "numSchools","address"]
     stateDistricts: list[dict] = []
     
     page = 1
@@ -51,7 +50,7 @@ def get_school_districts(state) -> list[dict]:
             "appKey":API_key,
         }
 
-        response = requests.get(url, params=params, timeout=20)
+        response = requests.get(school_digger_url, params=params, timeout=20)
         response.raise_for_status()  # Raise an error for bad status codes
         data = response.json()
 
@@ -68,13 +67,19 @@ def get_school_districts(state) -> list[dict]:
         
     return stateDistricts
     
-
+#-------------------------get all school district information--------------------
+def get_all_US_district_information():
+    district_by_state = []
+    for state_index, state in enumerate(states):
+        data = get_school_districts_by_state(state)
+        district_by_state[state_index]
+    
 if __name__ == "__main__":
     import random 
     random_state = random.choice(states)
     
     print(f"Random state selected: {random_state}")
-    districts = get_school_districts(random_state)
+    districts = get_school_districts_by_state(random_state)
     
     for d in districts:
         print(d)

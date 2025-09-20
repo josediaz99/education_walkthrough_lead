@@ -1,7 +1,6 @@
 # search_improvement_plans.py
 import re
 import asyncio
-from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple
 from urllib.parse import urlparse, quote_plus
 
@@ -13,8 +12,7 @@ SEARCH_VARIANTS = [
     '"district improvement plan"',
     '"school improvement plan"',
     '"strategic plan"',
-    '"continuous improvement plan"',
-    '"improvement plan"',
+    '"improvement plan"'
 ]
 
 KEYWORD_PATTERNS = [
@@ -22,7 +20,7 @@ KEYWORD_PATTERNS = [
     r"\bschool improvement plan\b",
     r"\bstrategic plan\b",
     r"\bcontinuous improvement plan\b",
-    r"\bimprovement plan\b",
+    r"\bimprovement plan\b"
 ]
 
 ALLOW_HOST_HINTS = (
@@ -101,6 +99,7 @@ async def fetch_bing_results(page, query: str, max_results: int = MAX_SERP_PER_Q
     """
     Returns a list of {title, url, snippet, query}
     """
+    print("fetching bing results for query:")
     q = f"https://www.bing.com/search?q={quote_plus(query)}&setlang=en-US"
     await page.goto(q, wait_until="domcontentloaded", timeout=30000)
     await page.wait_for_timeout(600)  # settle a bit
@@ -116,6 +115,7 @@ async def fetch_bing_results(page, query: str, max_results: int = MAX_SERP_PER_Q
         if await a.count() == 0:
             continue
         title = (await a.inner_text()).strip()
+        print("Title found:", title)
         url = await a.get_attribute("href")
         if not url:
             continue
@@ -233,9 +233,22 @@ async def search_dip_for_district(
         "verified_content_type": Optional[str],
       }
     """
+    print("extracting domain from url")
     district_domain = extract_domain(district_url)
+    if not district_domain:
+        raise ValueError(f"Could not extract domain from URL: {district_url}")
+    else:
+        print('district domain: ' + district_domain)
+        
+    print("shortening " + district_name + " to aliases")
     name_aliases = guess_aliases(district_name)
+    if not name_aliases:
+        raise ValueError("something went wrong with creating aliases")
+    else:
+        print("name aliases: " + str(name_aliases))
+    
 
+    print("going into playwright to seach for results")
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
         context = await browser.new_context(
@@ -257,6 +270,7 @@ async def search_dip_for_district(
                 q = f'{district_name} {v}'
                 if pdf_only:
                     q = f'{q} filetype:pdf'
+                    print(f"Searching (PDF only): {q}")
 
                 serp = await fetch_bing_results(page, q, MAX_SERP_PER_QUERY)
                 for item in serp:
@@ -327,12 +341,39 @@ async def search_dip_for_district(
         return results[:top_n]
 
 
+
+
+#--- unfinished --------------------------------------------------------------
+
+
+# the previous verify 
+def verifyLinks(districtList, districtName) -> dict:
+    '''
+    function validates if the links found from the initial scrape are valid to the school districh which we are currently looking for
+    args:
+        DistrictList: tuple
+            tuple - list of links to top results from initial scrape
+    returns: dict
+        dict - dictionary for the most likely link to the improvement plans for the district or none if no valid links are found
+    '''
+    for district in districtList:
+        districtName = re.sub(r'[^a-zA-Z]','', districtName)
+        if districtName in district['title'] or districtName in district['url']:
+            print("contains district name")
+        
+        
+
+
+
+
+
 # --- Example usage ---------------------------------------------------------
 
 if __name__ == "__main__":
     async def main():
         district_name = "Maywood School District 89"
         district_url = "https://www.maywood89.org/"
+        print('going into the search for district function')
         hits = await search_dip_for_district(district_name, district_url, pdf_only_first=True, top_n=5)
         for i, h in enumerate(hits, 1):
             print(f"{i}. [{h['score']}] {h['title']}\n   {h['url']}\n   why: {h['why']}\n   verified={h['verified']} ct={h['verified_content_type']} vt={h['verified_title']}\n")

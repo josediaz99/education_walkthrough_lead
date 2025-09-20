@@ -58,6 +58,7 @@ def get_school_districts(state) -> list[dict]:
 
         for r in rows:
             filtered_row = {key: r[key] for key in important_fields if key in r}
+            filtered_row["street"] = r["address"]["street"]
             filtered_row["city"] = r["address"]["city"]
             filtered_row["state"] = r["address"]["state"]
             filtered_row["zip"] = r["address"]["zip"]

@@ -13,49 +13,64 @@ views = Blueprint('views', __name__)
 @views.route('/', methods=['GET', 'POST'])
 def home():
     if request.method == 'POST':
-        # name = request.form.get('name')
-        # address = request.form.get('address')
-        # city = request.form.get('city')
-        # state = request.form.get('state')
-        # zip_code = request.form.get('zip_code')
-        # phone_number = request.form.get('phone_number')
-        # email = request.form.get('email')
-        # website = request.form.get('website')
-
-
-        # new_school = School(name=name, address=address, city=city, state=state, zip_code=zip_code, phone_number=phone_number, email=email, website=website)
-        
-
-        # for tag_name in request.form.getlist('tags'):
-        #     new_tag = Tag.query.filter_by(name=tag_name).first()
-        #     new_school.tags.append(new_tag)
-
-        # print(new_school.tags)
-        # db.session.add(new_school)
-        # db.session.commit()
-
-        # flash("School Added!", category='success')
+        print("LOADING SCHOOLS")
         school_districts = get_school_districts("IL")
         # print(school_districts)
 
         for district in school_districts:
-            nces_id = district["districtID"]
-            name = district["districtName"]
-            street = district["street"]
-            city = district["city"]
-            state = district["state"]
-            zip_code = district["zip"]
-            phone_number = district["phone"]
-            website = district["url"]
-            lowGrade = district["lowGrade"]
-            highGrade = district["highGrade"]
-            numberTotalSchools = district["numberTotalSchools"]
+            if(db.session.query(School.id).filter_by(nces_id=district["districtID"]).first() is None):
+                nces_id = district["districtID"]
+                name = district["districtName"]
+                street = district["street"]
+                city = district["city"]
+                state = district["state"]
+                zip_code = district["zip"]
+                phone_number = district["phone"]
+                website = district["url"]
+                # lowGrade = district["lowGrade"]
+                # highGrade = district["highGrade"]
+                numberTotalSchools = district["numberTotalSchools"]
 
-            new_school = School(nces_id=nces_id, name=name, street=street, city=city, state=state, zip_code=zip_code, phone_number=phone_number, website=website, lowGrade=lowGrade, highGrade=highGrade, numberTotalSchools=numberTotalSchools)
-            db.session.add(new_school)
-            db.session.commit()
+                new_school = School(nces_id=nces_id, name=name, street=street, city=city, state=state, zip_code=zip_code, phone_number=phone_number, website=website, numberTotalSchools=numberTotalSchools)
+                db.session.add(new_school)
+                db.session.commit()
 
-    return render_template("home.html", schools=School.query.all())
+        schools = School.query.all()
+        
+    else:
+        print("FILTERING")
+        city = request.args.get('city')
+        state = request.args.get('state')
+        zip_code = request.args.get('zip_code')
+
+        tag_names = request.args.getlist('tags')
+        tags = db.session.query(Tag).filter(Tag.name.in_(tag_names)).all()
+
+        query = db.session.query(School)
+        print(zip_code)
+        if(city):
+            print("BY CITY")
+            query = query.filter(School.city == city)
+        if(state):
+            print("BY STATE")
+            query = query.filter(School.state == state)
+        if(zip_code):
+            print("BY ZIP CODE")
+            query = query.filter(School.zip_code == zip_code)
+        if(tags):
+            print("TAGS")
+            print([tag.name for tag in tags])
+            query = query.filter(School.tags.any(Tag.name.in_([tag.name for tag in tags])))
+
+        schools = query.all()
+        print(schools)
+
+    return render_template(
+        "home.html", 
+        schools=schools, 
+        states=["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"],
+        tags=Tag.query.all()
+        )
 
 @views.route('/search')
 def search():
@@ -63,7 +78,7 @@ def search():
     if(query != ""):
         results = School.query.filter(
             School.name.ilike(f"%{query}%") | 
-            School.address.ilike(f"%{query}%") | 
+            School.street.ilike(f"%{query}%") | 
             School.city.ilike(f"%{query}%") | 
             School.state.ilike(f"%{query}%") | 
             School.zip_code.ilike(f"%{query}%") |
@@ -73,5 +88,29 @@ def search():
         ).all()
     else:
         results = School.query.all()
-    print(results)
+    
+    return render_template('search_results.html', results=results)
+
+@views.route('/filter', methods=['POST'])
+def filter():
+    city = request.form.get('city')
+    state = request.form.get('state')
+    zip_code = request.form.get('zip_code')
+
+    tag_names = request.form.getlist('tags')
+    tags = db.session.query(Tag).filter(Tag.name.in_(tag_names)).all()
+
+    query = db.session.query(School)
+
+    if(city):
+        query = query.filter(School.city == city)
+    if(state):
+        query = query.filter(School.state == state)
+    if(zip_code):
+        query = query.filter(School.zip_code == zip_code)
+    if(tags):
+        query = query.filter(School.tags.any(Tag.id.in_([tag.id for tag in tags])))
+
+    results = query.all()
+
     return render_template('search_results.html', results=results)

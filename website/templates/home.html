@@ -3,6 +3,32 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
+    <div class="filter">
+        <form method="GET" action="/">
+            <label for="city">City:</label><br>
+            <input type="text" id="city" name="city"><br>
+            <label for="state">State:</label><br>
+            <select name="state" id="state-select">
+                <option value="">--Please choose an option--</option>
+                {% for state in states %}
+                    <option value="{{state}}">{{state}}</option>
+                {% endfor %}
+            </select><br>
+            <label for="zip_code">Zip Code:</label><br>
+            <input type="text" id="zip_code" name="zip_code"><br>
+            <label for="tags">Tag(s):</label><br>
+            <select name="tags" id="tags" multiple>
+                {% for tag in tags %}
+                    <option value="{{tag.name}}">{{tag.name}}</option>
+                {% endfor %}
+            </select>
+            <br />
+            <div align="center">
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </div>
+        </form>
+    </div>
+    <div class="cards-container">
         <ul class="result-list" id="results">
             {% for school in schools %}
                 <li class="result-card">
@@ -26,33 +52,10 @@
                 </li>
             {% endfor %}
         </ul>
-    <form method="POST">
-        <!-- <label for="name">Name:</label><br>
-        <input type="text" id="name" name="name"><br>
-        <label for="address">Address:</label><br>
-        <input type="text" id="address" name="address"><br>
-        <label for="city">City:</label><br>
-        <input type="text" id="city" name="city"><br>
-        <label for="state">State:</label><br>
-        <input type="text" id="state" name="state"><br>
-        <label for="zip_code">Zip Code:</label><br>
-        <input type="text" id="zip_code" name="zip_code"><br>
-        <label for="phone_number">Phone Number:</label><br>
-        <input type="text" id="phone_number" name="phone_number"><br>
-        <label for="email">Email:</label><br>
-        <input type="text" id="email" name="email"><br>
-        <label for="website">Website:</label><br>
-        <input type="text" id="website" name="website"><br>
-        <label for="website">Tag(s):</label><br>
-        <select name="tags" id="tags" multiple>
-            <option value="IB">IB</option>
-            <option value="AP">AP</option>
-            <option value="AVID">AVID</option>
-            <option value="Professional Development">Professional Development</option>
-        </select>
-        <br /> -->
-        <div align="center">
-            <button type="submit" class="btn btn-primary">Add Districts</button>
-        </div>
-    </form>
+        <form method="POST">
+            <div align="center">
+                <button type="submit" class="btn btn-primary">Add Districts</button>
+            </div>
+        </form>
+    </div>
 {% endblock %}

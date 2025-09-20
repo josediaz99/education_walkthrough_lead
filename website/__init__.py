@@ -25,12 +25,24 @@ def create_database(app):
             db.create_all()
             
             from .models import Tag
-            pd_tag = Tag(name="Professional Development")
-            ib_tag = Tag(name="IB")
-            ap_tag = Tag(name="AP")
-            avid_tag = Tag(name="AVID")
+            new_tags = []
+            if(db.session.query(Tag.id).filter_by(name="Professional Development").first() is None):
+                pd_tag = Tag(name="Professional Development")
+                new_tags.append(pd_tag)
+            
+            if(db.session.query(Tag.id).filter_by(name="IB").first() is None):
+                ib_tag = Tag(name="IB")
+                new_tags.append(ib_tag)
+            
+            if(db.session.query(Tag.id).filter_by(name="AP").first() is None):
+                ap_tag = Tag(name="AP")
+                new_tags.append(ap_tag)
 
-            db.session.add_all([pd_tag, ib_tag, ap_tag, avid_tag])
+            if(db.session.query(Tag.id).filter_by(name="AVID").first() is None):
+                avid_tag = Tag(name="AVID")
+                new_tags.append(avid_tag)
+
+            db.session.add_all(new_tags)
 
             db.session.commit()
 

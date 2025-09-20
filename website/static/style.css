@@ -9,6 +9,8 @@ body {
 }
 
 .container {
+  display: flex;
+  flex-direction: row;
   max-width: 900px;
   margin: 0 auto;
   margin-top: 50px;
@@ -19,6 +21,13 @@ body {
 .navbar-container {
   position: top;
 }
+
+.filter {
+  position: fixed;
+  top: 80px;
+  left: 10px;
+  background: #f8fafc;
+}
   
 
 /* Search */
@@ -28,6 +37,12 @@ body {
   padding-right: 20px;
   min-width: 364px;
   min-height: 40px;
+}
+
+/* Cards */
+.cards-container {
+  display: flex;
+  flex-direction: column;
 }
 
 /* List layout */

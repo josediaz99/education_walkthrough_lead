@@ -2,7 +2,6 @@
 file is meant to access school digger api and return the list of shool district given a state
 '''
 import requests
-import json
 from dotenv import load_dotenv
 import os
 #------------we will make calls only to the too which will return mutiple school districts-------------------------
@@ -36,7 +35,7 @@ def get_school_districts(state) -> list[dict]:
     Returns:
         stateDistricts (list[dict]): lift of school district in the json format returned by the api
     """
-    important_fields = ["districtID", "districtName", "state", "city", "zip", "phone", "url", "lowGrade", "highGrade", "numberTotalSchools"]
+    important_fields = ["districtID", "districtName", "state", "city", "zip", "phone", "url" ,"numberTotalSchools"]
     stateDistricts: list[dict] = []
     
     page = 1
@@ -59,12 +58,15 @@ def get_school_districts(state) -> list[dict]:
 
         for r in rows:
             filtered_row = {key: r[key] for key in important_fields if key in r}
-            filtered_row["street"] = r["address"]["street"]
             filtered_row["city"] = r["address"]["city"]
             filtered_row["state"] = r["address"]["state"]
             filtered_row["zip"] = r["address"]["zip"]
+            filtered_row["lat"] = r["address"]["latLong"]["latitude"]
+            filtered_row["long"] = r["address"]["latLong"]["longitude"]
             filtered_row["countyName"] = r["county"]["countyName"]
             stateDistricts.append(filtered_row)
+            
+            
 
         if len(rows) < max_page:
             print("All data retrieved")

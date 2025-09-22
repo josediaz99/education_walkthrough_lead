@@ -3,23 +3,20 @@ import re
 import asyncio
 from typing import List, Dict, Any, Tuple
 from urllib.parse import urlparse, quote_plus
-
+import random
 from playwright.async_api import async_playwright
 
 # --- Tunables --------------------------------------------------------------
 
 SEARCH_VARIANTS = [
-    '"district improvement plan"',
-    '"school improvement plan"',
-    '"strategic plan"',
-    '"improvement plan"'
+    'district improvement plan',
+    'strategic plan',
+    'improvement plan'
 ]
 
-KEYWORD_PATTERNS = [
+desired_docs = [
     r"\bdistrict improvement plan\b",
-    r"\bschool improvement plan\b",
     r"\bstrategic plan\b",
-    r"\bcontinuous improvement plan\b",
     r"\bimprovement plan\b"
 ]
 
@@ -30,17 +27,40 @@ ALLOW_HOST_HINTS = (
     "box.com", "dropbox.com"
 )
 
-MAX_SERP_PER_QUERY = 12     # keep this modest for speed
+MAX_SERP_PER_QUERY = 15     # keep this modest for speed
 TOP_N_RESULTS = 5           # final results per district
 VERIFY_TARGETS = True       # quick HEAD/GET verify
 
 # --- Helpers ---------------------------------------------------------------
-def host_matches_base(host: str, base_domain: str) -> bool:
-    # e.g., host: files.maywood89.org matches base_domain: maywood89.org
-    return host == base_domain or host.endswith("." + base_domain)
+def any_keyword(text: str) -> bool:
+    '''
+    function takes in aomw twxt from the title, url, or description and returns if any of the the any of the plans are found in the title
+    '''
+    t = (text or "").lower()
+    for desired_doc in desired_docs:
+        if re.search(desired_doc, t):
+            return True
+    # allow looser match (strategic + plan within string)
+    return ("strategic" in t and "plan" in t) or ("improvement" in t and "plan" in t)
 
-def extract_domain(district_url: str) -> str:
-    return urlparse(district_url).netloc.lower().lstrip("www.")
+def name_matches(text: str, name_aliases: List[str]) -> bool:
+    """
+    returns if the texts contains the names of any of the aliases"""
+    t = (text or "").lower()
+    return any(a in t for a in name_aliases)
+
+def host_from_url(u: str) -> str:
+    """returns a cleaned up host from a url"""
+    return urlparse(u).netloc.lower().lstrip("www.")
+
+def looks_like_pdf(url: str) -> bool:
+    """checks if the url contains or ends in pdf"""
+    u = url.lower()
+    return u.endswith(".pdf") or ".pdf" in u
+
+def is_allowed_offdomain(host: str) -> bool:
+    return any(hint in host for hint in ALLOW_HOST_HINTS)
+
 
 def guess_aliases(district_name: str) -> List[str]:
     """
@@ -71,29 +91,7 @@ def guess_aliases(district_name: str) -> List[str]:
     aliases_lower = {a.lower() for a in aliases}
     return list(aliases_lower)
 
-def any_keyword(text: str) -> bool:
-    t = (text or "").lower()
-    for pat in KEYWORD_PATTERNS:
-        if re.search(pat, t):
-            return True
-    # allow looser match (strategic + plan within string)
-    return ("strategic" in t and "plan" in t) or ("improvement" in t and "plan" in t)
-
-def name_matches(text: str, name_aliases: List[str]) -> bool:
-    t = (text or "").lower()
-    return any(a in t for a in name_aliases)
-
-def host_from_url(u: str) -> str:
-    return urlparse(u).netloc.lower().lstrip("www.")
-
-def looks_like_pdf(url: str) -> bool:
-    u = url.lower()
-    return u.endswith(".pdf") or ".pdf" in u
-
-def is_allowed_offdomain(host: str) -> bool:
-    return any(hint in host for hint in ALLOW_HOST_HINTS)
-
-# --- SERP scraping (Bing) --------------------------------------------------
+# --- search plans through bing  --------------------------------------------------
 
 async def fetch_bing_results(page, query: str, max_results: int = MAX_SERP_PER_QUERY) -> List[Dict[str, str]]:
     """
@@ -101,7 +99,7 @@ async def fetch_bing_results(page, query: str, max_results: int = MAX_SERP_PER_Q
     """
     print("fetching bing results for query:")
     q = f"https://www.bing.com/search?q={quote_plus(query)}&setlang=en-US"
-    await page.goto(q, wait_until="domcontentloaded", timeout=30000)
+    await page.goto(q, wait_until="domcontentloaded", timeout=300000)
     await page.wait_for_timeout(600)  # settle a bit
 
     # We target the result blocks: li.b_algo
@@ -130,8 +128,16 @@ async def fetch_bing_results(page, query: str, max_results: int = MAX_SERP_PER_Q
 
 # --- Scoring & filtering ---------------------------------------------------
 
-def score_candidate(item: Dict[str, str], district_domain: str, name_aliases: List[str]) -> Tuple[int, str]:
+def score_candidate(item: Dict[str, str], name_aliases: List[str]) -> Tuple[int, str]:
     """
+    functions takes a district and its information and returns a score for meeting requirements
+    - pdf
+    
+    args:
+        item: dict
+            dict - dictionary with keys: title, url, snippet
+        name_aliases: list
+            list - list of name aliases for the district
     Returns (score, why_string)
     """
     title = item.get("title", "")
@@ -141,23 +147,28 @@ def score_candidate(item: Dict[str, str], district_domain: str, name_aliases: Li
 
     score = 0
     reasons = []
-
+    print("Scoring candidate:", title, url)
     # File type
     if looks_like_pdf(url):
         score += 3
         reasons.append("PDF")
 
     # Domain match or allowed off-domain with name match
+    '''
     if host == district_domain:
         score += 2
         reasons.append("domain match")
-    elif is_allowed_offdomain(host) and name_matches(title + " " + url + " " + snippet, name_aliases):
-        score += 1
-        reasons.append("trusted host + name match")
+    '''
+    
+    if name_matches(title + " " + url + " " + snippet, name_aliases):
+        for name in name_aliases:
+            if name in host:
+                score += 1
+                reasons.append("alias name " + name+ " in found")
 
     # Keyword checks
     if any_keyword(title):
-        score += 2
+        score += 3
         reasons.append("title has keywords")
     if any_keyword(url):
         score += 1
@@ -171,10 +182,10 @@ def score_candidate(item: Dict[str, str], district_domain: str, name_aliases: Li
         score += 1
         reasons.append("name match")
 
-    # Penalties for clearly irrelevant hosts
+    # Penalize social media / calendar links     
     if any(bad in host for bad in ("facebook.com", "twitter.com", "x.com", "youtube.com", "instagram.com", "calendar.google.com")):
-        score -= 2
-        reasons.append("social/calendar")
+        score -= 5
+        reasons.append("social-media/calendar")
 
     return score, ", ".join(reasons)
 
@@ -212,49 +223,41 @@ async def quick_verify(playwright_request_ctx, url: str) -> Dict[str, Any]:
 
 # --- Main entry ------------------------------------------------------------
 
-async def search_dip_for_district(
-    district_name: str,
-    district_url: str,
-    pdf_only_first: bool = True,
-    top_n: int = TOP_N_RESULTS
-) -> List[Dict[str, Any]]:
+async def search_dip_for_district(district_name: str, top_n: int = TOP_N_RESULTS) -> List[Dict]:
     """
     Returns: list of dicts:
       {
         "title": str,
         "url": str,
-        "host": str,
-        "filetype": "pdf"|"html"|"unknown",
         "score": int,
         "why": str,
         "found_by_query": str,
-        "verified": bool,
-        "verified_title": Optional[str],
-        "verified_content_type": Optional[str],
       }
     """
-    print("extracting domain from url")
-    district_domain = extract_domain(district_url)
-    if not district_domain:
-        raise ValueError(f"Could not extract domain from URL: {district_url}")
-    else:
-        print('district domain: ' + district_domain)
         
-    print("shortening " + district_name + " to aliases")
+    print("creating " + district_name + " to aliases")
     name_aliases = guess_aliases(district_name)
+
     if not name_aliases:
         raise ValueError("something went wrong with creating aliases")
     else:
         print("name aliases: " + str(name_aliases))
     
 
-    print("going into playwright to seach for results")
+  
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
+        users = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0",
+                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0",
+                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:130.0) Gecko/20100101 Firefox/130.0",
+                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"]
+
+        rand_user_agent = random.choice(users)
+        browser = await p.chromium.launch(headless=False, args=["--no-sandbox"])
         context = await browser.new_context(
-            user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/124.0.0.0 Safari/537.36"),
+            user_agent=(rand_user_agent),
             viewport={"width": 1366, "height": 900}
         )
         page = await context.new_page()
@@ -265,12 +268,9 @@ async def search_dip_for_district(
         seen_urls = set()
         candidates: List[Dict[str, Any]] = []
 
-        async def do_round(pdf_only: bool):
+        async def do_round():
             for v in SEARCH_VARIANTS:
                 q = f'{district_name} {v}'
-                if pdf_only:
-                    q = f'{q} filetype:pdf'
-                    print(f"Searching (PDF only): {q}")
 
                 serp = await fetch_bing_results(page, q, MAX_SERP_PER_QUERY)
                 for item in serp:
@@ -279,14 +279,14 @@ async def search_dip_for_district(
                         continue
                     seen_urls.add(url)
 
-                    # First-pass filter: must have keyword somewhere
+                    # search for keywords in title/url/snippet
                     if not (any_keyword(item["title"]) or any_keyword(item["url"]) or any_keyword(item["snippet"])):
                         continue
 
-                    # Keep if (a) host matches district or (b) title/url/snippet match a name alias
+                    #add some contect to each link
                     host = host_from_url(url)
-                    if (host == district_domain) or name_matches(item["title"] + " " + item["url"] + " " + item["snippet"], name_aliases) or is_allowed_offdomain(host):
-                        sc, why = score_candidate(item, district_domain, name_aliases)
+                    if name_matches(item["title"] + " " + item["url"] + " " + item["snippet"], name_aliases) or is_allowed_offdomain(host):
+                        sc, why = score_candidate(item, name_aliases)
                         if sc <= 0:
                             continue
                         candidates.append({
@@ -302,13 +302,11 @@ async def search_dip_for_district(
                             "verified_content_type": None
                         })
 
-        # Round 1: PDF-only (fast path to the actual plan files)
-        if pdf_only_first:
-            await do_round(pdf_only=True)
-
-        # Round 2: General (HTML allowed) if still thin
-        if len(candidates) < top_n:
-            await do_round(pdf_only=False)
+        
+        
+        #get more results if pdf list is too short
+        
+        await do_round()
 
         # De-dup by URL and keep best score
         best_by_url: Dict[str, Dict[str, Any]] = {}
@@ -335,35 +333,11 @@ async def search_dip_for_district(
 
         # Sort by score descending and trim
         results.sort(key=lambda x: x["score"], reverse=True)
+        print(f"Found {len(results)} candidates, returning top {top_n}")
         await browser.close()
         await req_ctx.dispose()
 
         return results[:top_n]
-
-
-
-
-#--- unfinished --------------------------------------------------------------
-
-
-# the previous verify 
-def verifyLinks(districtList, districtName) -> dict:
-    '''
-    function validates if the links found from the initial scrape are valid to the school districh which we are currently looking for
-    args:
-        DistrictList: tuple
-            tuple - list of links to top results from initial scrape
-    returns: dict
-        dict - dictionary for the most likely link to the improvement plans for the district or none if no valid links are found
-    '''
-    for district in districtList:
-        districtName = re.sub(r'[^a-zA-Z]','', districtName)
-        if districtName in district['title'] or districtName in district['url']:
-            print("contains district name")
-        
-        
-
-
 
 
 
@@ -372,10 +346,9 @@ def verifyLinks(districtList, districtName) -> dict:
 if __name__ == "__main__":
     async def main():
         district_name = "Maywood School District 89"
-        district_url = "https://www.maywood89.org/"
         print('going into the search for district function')
-        hits = await search_dip_for_district(district_name, district_url, pdf_only_first=True, top_n=5)
+        hits = await search_dip_for_district(district_name,top_n=5)
         for i, h in enumerate(hits, 1):
-            print(f"{i}. [{h['score']}] {h['title']}\n   {h['url']}\n   why: {h['why']}\n   verified={h['verified']} ct={h['verified_content_type']} vt={h['verified_title']}\n")
+            print(f"{i}. [{h['score']}] {h['title']}\n   {h['url']}\n   why: {h['why']}\n   verified={h['verified']} type={h['verified_content_type']}\n")
 
     asyncio.run(main())

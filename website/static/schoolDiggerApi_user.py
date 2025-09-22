@@ -35,7 +35,7 @@ def get_school_districts(state) -> list[dict]:
     Returns:
         stateDistricts (list[dict]): lift of school district in the json format returned by the api
     """
-    important_fields = ["districtID", "districtName", "state", "city", "zip", "phone", "url" ,"numberTotalSchools"]
+    important_fields = ["districtID", "districtName", "state", "city", "zip", "phone", "url" ,"numberTotalSchools", "lowGrade", "highGrade", "street"]
     stateDistricts: list[dict] = []
     
     page = 1
@@ -64,6 +64,9 @@ def get_school_districts(state) -> list[dict]:
             filtered_row["lat"] = r["address"]["latLong"]["latitude"]
             filtered_row["long"] = r["address"]["latLong"]["longitude"]
             filtered_row["countyName"] = r["county"]["countyName"]
+            filtered_row["street"] = r["address"]["street"]
+            filtered_row["lowGrade"] = r["lowGrade"]
+            filtered_row["highGrade"] = r["highGrade"]
             stateDistricts.append(filtered_row)
             
             

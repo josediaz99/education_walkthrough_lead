@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}{{ school.name }}{% endblock %}
+
+{% block content %}
+<div class="district-detail">
+    <!-- Back button -->
+    <div class="mb-3">
+        <a href="{{ url_for('views.home') }}" class="btn btn-secondary">
+            <i class="fa fa-arrow-left"></i> Back to Search
+        </a>
+    </div>
+
+    <!-- District Header -->
+    <div class="district-header mb-4">
+        <h1 class="display-4">{{ school.name }}</h1>
+        {% if school.tags %}
+            <div class="tags mb-3">
+                {% for tag in school.tags %}
+                    <span class="tag">{{ tag.name }}</span>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- District Information Cards -->
+    <div class="row">
+        <!-- Contact Information -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h4><i class="fa fa-address-book"></i> Contact Information</h4>
+                </div>
+                <div class="card-body">
+                    {% if school.street %}
+                        <p><strong>Address:</strong><br>
+                        {{ school.street }}<br>
+                        {{ school.city }}, {{ school.state }} {{ school.zip_code }}</p>
+                    {% endif %}
+                    
+                    {% if school.phone_number %}
+                        <p><strong>Phone:</strong> 
+                        <a href="tel:{{ school.phone_number }}">{{ school.phone_number }}</a></p>
+                    {% endif %}
+                    
+                    {% if school.email %}
+                        <p><strong>Email:</strong> 
+                        <a href="mailto:{{ school.email }}">{{ school.email }}</a></p>
+                    {% endif %}
+                    
+                    {% if school.website %}
+                        <p><strong>Website:</strong> 
+                        <a href="{{ school.website }}" target="_blank" rel="noopener">
+                            {{ school.website }} <i class="fa fa-external-link"></i>
+                        </a></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- District Statistics -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h4><i class="fa fa-bar-chart"></i> District Information</h4>
+                </div>
+                <div class="card-body">
+                    {% if school.nces_id %}
+                        <p><strong>NCES ID:</strong> {{ school.nces_id }}</p>
+                    {% endif %}
+                    
+                    {% if school.numberTotalSchools %}
+                        <p><strong>Total Schools:</strong> {{ school.numberTotalSchools }}</p>
+                    {% endif %}
+                    
+                    {% if school.lowGrade and school.highGrade %}
+                        <p><strong>Grade Levels:</strong> {{ school.lowGrade }} - {{ school.highGrade }}</p>
+                    {% endif %}
+                    
+                    {% if school.county %}
+                        <p><strong>County:</strong> {{ school.county }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documents Section -->
+    {% if school.documents %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fa fa-file-text"></i> Documents</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            {% for document in school.documents %}
+                                <a href="{{ document.url }}" 
+                                   class="list-group-item list-group-item-action"
+                                   target="_blank" rel="noopener">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h5 class="mb-1">{{ document.title }}</h5>
+                                        <small>{{ document.upload_date.strftime('%m/%d/%Y') }}</small>
+                                    </div>
+                                    <i class="fa fa-external-link"></i>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fa fa-file-text"></i> Documents</h4>
+                    </div>
+                    <div class="card-body text-center">
+                        <p class="text-muted">No documents available for this district.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.district-detail {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.district-header h1 {
+    color: #1a365d;
+    margin-bottom: 1rem;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.card-header h4 {
+    margin: 0;
+    color: #495057;
+}
+
+.tags .tag {
+    display: inline-block;
+    padding: 0.5rem 0.75rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    background-color: #007bff;
+    color: white;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}

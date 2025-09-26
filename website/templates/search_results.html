@@ -2,14 +2,14 @@
     <li class="result-card">
         <a
             class="stretched-link"
-            href="district.html"
-            aria-label="Open DoDEA Americas Southeast District"
-            >Open DoDEA Americas Southeast District
+            href="{{ url_for('views.district_detail', district_id=school.id) }}"
+            aria-label="Open {{ school.name }}"
+            >Open {{ school.name }}
         </a>
 
         <h3 class="title">{{school.name}}</h3>
         <address class="addr">
-            {{school.address}}, {{school.city}}, {{school.state}}, {{school.zip_code}}
+            {{school.street}}, {{school.city}}, {{school.state}}, {{school.zip_code}}
         </address>
         
         <div class="tags">

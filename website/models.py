@@ -25,9 +25,13 @@ class School(db.Model):
     email = db.Column(db.String(150), unique=True)
     website = db.Column(db.String(150))
     numberTotalSchools = db.Column(db.Integer)
+    street = db.Column(db.String(150))
+    lowGrade = db.Column(db.String(10))
+    highGrade = db.Column(db.String(10))
     documents = db.relationship('Document')
     tags = db.relationship('Tag', secondary=school_tag, backref='schools')
-    lat = db.column()
+    #lat = db.column(db.loat)
+    #long = db.column(db.float)
 
 class Document(db.Model):
     id = db.Column(db.Integer, primary_key=True)

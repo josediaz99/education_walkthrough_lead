@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Tuple
 from urllib.parse import urlparse, quote_plus
 import random
 from playwright.async_api import async_playwright
-
+import subprocess
 # --- Tunables --------------------------------------------------------------
 
 SEARCH_VARIANTS = [
@@ -20,16 +20,11 @@ desired_docs = [
     r"\bimprovement plan\b"
 ]
 
-ALLOW_HOST_HINTS = (
-    "boarddocs", "finalsite", "sharpeschool", "blackboard",
-    "core-docs", "coredocs", "sharepoint", "onedrive", "google.com",
-    "drive.google.com", "docs.google.com", "s3.", "amazonaws.com",
-    "box.com", "dropbox.com"
-)
+
 
 MAX_SERP_PER_QUERY = 15     # keep this modest for speed
 TOP_N_RESULTS = 5           # final results per district
-VERIFY_TARGETS = True       # quick HEAD/GET verify
+VERIFY_TARGETS = True       # set this to false to skip verification step
 
 # --- Helpers ---------------------------------------------------------------
 def any_keyword(text: str) -> bool:
@@ -57,9 +52,6 @@ def looks_like_pdf(url: str) -> bool:
     """checks if the url contains or ends in pdf"""
     u = url.lower()
     return u.endswith(".pdf") or ".pdf" in u
-
-def is_allowed_offdomain(host: str) -> bool:
-    return any(hint in host for hint in ALLOW_HOST_HINTS)
 
 
 def guess_aliases(district_name: str) -> List[str]:
@@ -147,7 +139,7 @@ def score_candidate(item: Dict, name_aliases: List[str]) -> Tuple:
 
     score = 0
     reasons = []
-    print("Scoring candidate:", title, url)
+    print("Scoring candidate:", title, url, snippet, "\n")
     # File type
     if looks_like_pdf(url):
         score += 3
@@ -183,7 +175,7 @@ def score_candidate(item: Dict, name_aliases: List[str]) -> Tuple:
         reasons.append("name match")
 
     # Penalize social media / calendar links     
-    if any(bad in host for bad in ("facebook.com", "twitter.com", "x.com", "youtube.com", "instagram.com", "calendar.google.com")):
+    if any(bad in host for bad in ("survey","facebook.com", "twitter.com", "x.com", "youtube.com", "instagram.com", "calendar.google.com")):
         score -= 5
         reasons.append("social-media/calendar")
 
@@ -223,54 +215,77 @@ async def quick_verify(playwright_request_ctx, url: str) -> Dict[str, Any]:
 
 # --- Main entry ------------------------------------------------------------
 
-async def search_dip_for_district(district_name: str, top_n: int = TOP_N_RESULTS) -> List[Dict]:
+async def search_dip_for_district(district_name: str, state = None) -> List[Dict]:
     """
     Returns: list of dicts:
       {
         "title": str,
         "url": str,
+        "snippet": str,
         "score": int,
         "why": str,
         "found_by_query": str,
       }
     """
         
-    print("creating " + district_name + " to aliases")
+    print("creating " + district_name + " to aliases: ")
     name_aliases = guess_aliases(district_name)
 
     if not name_aliases:
         raise ValueError("something went wrong with creating aliases")
     else:
-        print("name aliases: " + str(name_aliases))
+        print("name aliases: " + str(name_aliases) + "\n")
     
 
   
     async with async_playwright() as p:
-        users = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
-                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0",
-                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0",
-                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
-                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
-                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:130.0) Gecko/20100101 Firefox/130.0",
-                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"]
+        users = [
+            # Chrome
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.119 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.119 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.119 Safari/537.36",
 
-        rand_user_agent = random.choice(users)
-        browser = await p.chromium.launch(headless=False, args=["--no-sandbox"])
-        context = await browser.new_context(
-            user_agent=(rand_user_agent),
-            viewport={"width": 1366, "height": 900}
-        )
-        page = await context.new_page()
+            # Firefox
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 13.5; rv:125.0) Gecko/20100101 Firefox/125.0",
+            "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
 
-        # API-like HTTP context for quick verification
-        req_ctx = await p.request.new_context()
+            # Safari
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+
+            # Edge
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.119 Safari/537.36 Edg/124.0.2478.67",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.119 Safari/537.36 Edg/124.0.2478.67",
+        ]
+        
 
         seen_urls = set()
         candidates: List[Dict[str, Any]] = []
 
-        async def do_round():
-            for v in SEARCH_VARIANTS:
-                q = f'{district_name} {v}'
+        async def do_round(variant):
+                """
+                queries for documents based on varients and stores them as a dict while preventing being blocked through revolving user agents
+                args:
+                    variant: str
+                        str - the type of document we are searching for
+                """
+                rand_user_agent = random.choice(users) #prevent being blocked by bing
+                print("Using random user agent: " + rand_user_agent + "\n")
+                browser = await p.chromium.launch(headless=False, args=["--no-sandbox"])
+                context = await browser.new_context(
+                    user_agent=(rand_user_agent),
+                    viewport={"width": 1366, "height": 900}
+                )
+                page = await context.new_page()
+
+                # API-like HTTP context for quick verification
+                req_ctx = await p.request.new_context()
+
+                # Construct query
+                if state:
+                    q = f'{state} {district_name} {variant}'
+                else:
+                    q = f'{district_name} {variant}'
 
                 serp = await fetch_bing_results(page, q, MAX_SERP_PER_QUERY)
                 for item in serp:
@@ -285,7 +300,8 @@ async def search_dip_for_district(district_name: str, top_n: int = TOP_N_RESULTS
 
                     #add some contect to each link
                     host = host_from_url(url)
-                    if name_matches(item["title"] + " " + item["url"] + " " + item["snippet"], name_aliases) or is_allowed_offdomain(host):
+                    if name_matches(item["title"] + " " + item["url"] + " " + item["snippet"], name_aliases) :
+                        
                         sc, why = score_candidate(item, name_aliases)
                         if sc <= 0:
                             continue
@@ -299,14 +315,16 @@ async def search_dip_for_district(district_name: str, top_n: int = TOP_N_RESULTS
                             "found_by_query": item["query"],
                             "verified": False,
                             "verified_title": None,
-                            "verified_content_type": None
+                            "verified_content_type": None,
+                            'req_ctx': req_ctx
                         })
+                        await browser.close()
+                        await req_ctx.dispose()
 
         
-        
         #get more results if pdf list is too short
-        
-        await do_round()
+        for v in SEARCH_VARIANTS:   
+            await do_round(v)
 
         # De-dup by URL and keep best score
         best_by_url: Dict[str, Dict] = {}
@@ -318,7 +336,7 @@ async def search_dip_for_district(district_name: str, top_n: int = TOP_N_RESULTS
         results = list(best_by_url.values())
         # Quick verification step
         if VERIFY_TARGETS and results:
-            tasks = [quick_verify(req_ctx, r["url"]) for r in results]
+            tasks = [quick_verify(r['req_ctx'], r["url"]) for r in results]
             verifs = await asyncio.gather(*tasks, return_exceptions=True)
             for r, info in zip(results, verifs):
                 if isinstance(info, dict):
@@ -333,21 +351,54 @@ async def search_dip_for_district(district_name: str, top_n: int = TOP_N_RESULTS
 
         # Sort by score descending and trim
         results.sort(key=lambda x: x["score"], reverse=True)
-        print(f"Found {len(results)} candidates, returning top {top_n}")
-        await browser.close()
-        await req_ctx.dispose()
+        print(f"Found {len(results)} candidates")
+        
 
-        return results[:top_n]
+        return results
 
+#---- verify through prompt -------------------------------------------------
+def verify_with_prompt(district_name: str, candidate: Dict, state :str ) -> bool:
+    """
+    Uses a prompt to verify if the candidate is indeed a district improvement plan for the given district.
+    This is a placeholder function and should be implemented with an actual LLM call.
+    """
+    title = candidate.get("title", "")
+    url = candidate.get("url", "")
+    snippet = candidate.get("snippet", "")
 
+    prompt = f"""
+    Given the following information about a school district and a document, determine if the document is indeed a district improvement plan for the specified district.
 
+    District Name: {district_name}
+    District State: {state}
+
+    Document Title: {title}
+    Document URL: {url}
+    Document Snippet: {snippet}
+
+    Does this document appear to be a district improvement plan for the specified district? Answer "yes" or "no" and provide a brief explanation.
+    """
+
+    response = prompt_response(prompt)
+
+def prompt_response(prompt: str) -> str:
+    """
+    usses ollama llm to create a response
+    """
+    
 # --- Example usage ---------------------------------------------------------
 
 if __name__ == "__main__":
+    import pandas as pd
+
     async def main():
-        district_name = "Maywood School District 89"
-        print('going into the search for district function')
-        hits = await search_dip_for_district(district_name,top_n=5)
+        district_df = pd.read_excel("dir_ed_entities.xls",sheet_name=1, usecols=['FacilityName','RecType'])
+        district_df = district_df[district_df['RecType']=='Dist']
+        district_name = district_df['FacilityName'].sample(n=1).values[0]
+
+        print('searching for district: \n')
+        print(district_name + "\n")
+        hits = await search_dip_for_district(district_name)
         for i, h in enumerate(hits, 1):
             print(f"{i}. [{h['score']}] {h['title']}\n   {h['url']}\n   why: {h['why']}\n   verified={h['verified']} type={h['verified_content_type']}\n")
 

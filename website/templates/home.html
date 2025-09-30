@@ -9,7 +9,7 @@
             <input type="text" id="city" name="city"><br>
             <label for="state">State:</label><br>
             <select name="state" id="state-select">
-                <option value="">--Please choose an option--</option>
+                <option value="">Please choose an option</option>
                 {% for state in states %}
                     <option value="{{state}}">{{state}}</option>
                 {% endfor %}
@@ -23,6 +23,7 @@
                 {% endfor %}
             </select>
             <br />
+            <div class="filter-break"></div>
             <div align="center">
                 <button type="submit" class="btn btn-primary">Apply</button>
             </div>

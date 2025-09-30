@@ -8,13 +8,24 @@ body {
   color: #111827;
 }
 
-.container {
+/* .container {
   display: flex;
   flex-direction: row;
   max-width: 900px;
   margin: 0 auto;
   margin-top: 50px;
   padding: 24px;
+} */
+
+.container {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;               /* space between sidebar and content */
+  max-width: 100%;       /* allow room for sidebar + content */
+  margin: 0 auto;
+  margin-top: 80px;        /* leave room for the fixed navbar */
+  padding: 24px;
+  align-items: flex-start;
 }
 
 /* Navbar */
@@ -22,13 +33,38 @@ body {
   position: top;
 }
 
-.filter {
+/* .filter {
   position: fixed;
-  top: 80px;
-  left: 10px;
+  top: 0px;
+  left: 0px;
   background: #f8fafc;
+  border-color: #111827;
+  box-shadow: #000000;
+  padding-top: 10%;
+  padding-left: 25px;
+  padding-right: 25px;
+  height: 100%;
+  align-items: center;
+} */
+
+.filter {
+  /* remove fixed positioning so it participates in normal flow */
+  position: fixed;        /* was: position: fixed; */
+  flex: 0 0 260px;         /* fixed sidebar width inside the flex container */
+  width: 260px;
+  background: #f8fafc;
+  border-color: #111827;
+  box-shadow: none;
+  padding-top: 1rem;       /* reduced top padding (was 10%) */
+  padding-left: 25px;
+  padding-right: 25px;
+  /* height removed so it sizes to content */
+  align-items: flex-start;
 }
-  
+
+.filter-break{
+  height: 15px;
+}
 
 /* Search */
 .search {
@@ -40,9 +76,20 @@ body {
 }
 
 /* Cards */
+/* .cards-container {
+  display: flex;
+  flex-direction: column;
+  background-color: #1d4ed8;
+} */
+
 .cards-container {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;          /* take remaining horizontal space */
+  max-width: 700px;        /* limit inner content width for centered look */
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px;
 }
 
 /* List layout */
@@ -93,3 +140,19 @@ address { font-style: normal; }
 }
 .tag:hover { filter: brightness(.95); }
 .tag:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; }
+
+@media (max-width: 800px) {
+  .container {
+    flex-direction: column;
+    margin-top: 110px;     /* extra room for navbar on small screens */
+  }
+  .filter {
+    width: 100%;
+    flex: none;
+    padding-top: .5rem;
+  }
+  .cards-container {
+    max-width: 100%;
+    padding: 16px;
+  }
+}

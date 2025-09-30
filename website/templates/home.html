@@ -3,6 +3,61 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
+    <div class="navbar-container">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top shadow">
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbar">
+                <div class="navbar-nav">
+                    <input 
+                        type="text" 
+                        class="search" 
+                        placeholder="Search" 
+                        name="query" 
+                        hx-get="/search"
+                        hx-trigger="keyup changed delay:100ms"
+                        hx-target="#results"
+                        hx-include="#filter-form"
+                        hx-push-url="true"
+                        hx-boost="true"
+                    />
+                </div>
+            </div>
+        </nav>
+    </div>
+    <div class="filter">
+        <form 
+            id="filter-form" 
+            hx-get="/search"
+            hx-target="#results"
+            hx-include=".search"
+            >
+            <label for="city">City:</label><br>
+            <input type="text" id="city" name="city"><br>
+            <label for="state">State:</label><br>
+            <select name="state" id="state-select">
+                <option value="">Please choose an option</option>
+                {% for state in states %}
+                    <option value="{{state}}">{{state}}</option>
+                {% endfor %}
+            </select><br>
+            <label for="zip_code">Zip Code:</label><br>
+            <input type="text" id="zip_code" name="zip_code"><br>
+            <label for="tags">Tag(s):</label><br>
+            <select name="tags" id="tags" multiple>
+                {% for tag in tags %}
+                    <option value="{{tag.name}}">{{tag.name}}</option>
+                {% endfor %}
+            </select>
+            <br />
+            <div class="filter-break"></div>
+            <div align="center">
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </div>
+        </form>
+    </div>
+    <div class="cards-container">
         <ul class="result-list" id="results">
             {% for school in schools %}
                 <li class="result-card">
@@ -26,9 +81,10 @@
                 </li>
             {% endfor %}
         </ul>
-    <form method="POST">
-        <div align="center">
-            <button type="submit" class="btn btn-primary">Add Districts</button>
-        </div>
-    </form>
+        <form method="POST">
+            <div align="center">
+                <button type="submit" class="btn btn-primary">Add Districts</button>
+            </div>
+        </form>
+    </div>
 {% endblock %}

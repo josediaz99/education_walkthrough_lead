@@ -16,9 +16,7 @@ school_tag = db.Table(
 class School(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nces_id = db.Column(db.String(10), unique=True)
-    nces_id = db.Column(db.String(10), unique=True)
     name = db.Column(db.String(150))
-    street = db.Column(db.String(50))
     street = db.Column(db.String(50))
     county = db.Column(db.String(150))
     city = db.Column(db.String(150))
@@ -45,6 +43,5 @@ class Document(db.Model):
 
 class Tag(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True)
     name = db.Column(db.String(50), unique=True)
     description = db.Column(db.String(150))

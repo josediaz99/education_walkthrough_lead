@@ -3,8 +3,36 @@
 {% block title %}Home{% endblock %}
 
 {% block content %}
+    <div class="navbar-container">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top shadow">
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbar">
+                <div class="navbar-nav">
+                    <input 
+                        type="text" 
+                        class="search" 
+                        placeholder="Search" 
+                        name="query" 
+                        hx-get="/search"
+                        hx-trigger="keyup changed delay:100ms"
+                        hx-target="#results"
+                        hx-include="#filter-form"
+                        hx-push-url="true"
+                        hx-boost="true"
+                    />
+                </div>
+            </div>
+        </nav>
+    </div>
     <div class="filter">
-        <form method="GET" action="/">
+        <form 
+            id="filter-form" 
+            hx-get="/search"
+            hx-target="#results"
+            hx-include=".search"
+            >
             <label for="city">City:</label><br>
             <input type="text" id="city" name="city"><br>
             <label for="state">State:</label><br>

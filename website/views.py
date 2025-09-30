@@ -12,6 +12,8 @@ views = Blueprint('views', __name__)
 
 @views.route('/', methods=['GET', 'POST'])
 def home():
+    schools = []
+
     if request.method == 'POST':
         print("LOADING SCHOOLS")
         school_districts = get_school_districts("IL")
@@ -34,7 +36,9 @@ def home():
                 db.session.add(new_school)
                 db.session.commit()
 
-    return render_template("home.html", schools=School.query.all())
+        schools = School.query.all()
+
+    return render_template("home.html", schools=schools, tags=Tag.query.all(), states=["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"])
 
 @views.route('/district/<int:district_id>')
 def district_detail(district_id):
@@ -44,34 +48,28 @@ def district_detail(district_id):
 
 @views.route('/search')
 def search():
-    query = request.args.get("query")
-    if(query != ""):
-        results = School.query.filter(
-            School.name.ilike(f"%{query}%") | 
-            School.street.ilike(f"%{query}%") | 
-            School.city.ilike(f"%{query}%") | 
-            School.state.ilike(f"%{query}%") | 
-            School.zip_code.ilike(f"%{query}%") |
-            School.phone_number.ilike(f"%{query}%") |
-            School.email.ilike(f"%{query}%") |
-            School.website.ilike(f"%{query}%")
-        ).all()
-    else:
-        results = School.query.all()
-    
-    return render_template('search_results.html', results=results)
+    print("SEARCH")
+    city = request.args.get('city')
+    state = request.args.get('state')
+    zip_code = request.args.get('zip_code')
 
-@views.route('/filter', methods=['POST'])
-def filter():
-    city = request.form.get('city')
-    state = request.form.get('state')
-    zip_code = request.form.get('zip_code')
-
-    tag_names = request.form.getlist('tags')
+    tag_names = request.args.getlist('tags')
     tags = db.session.query(Tag).filter(Tag.name.in_(tag_names)).all()
 
     query = db.session.query(School)
 
+    search = request.args.get("query")
+
+    if(search and search != ""):
+        print("HERE")
+        query = query.filter(
+            School.name.ilike(f"%{search}%") | 
+            School.street.ilike(f"%{search}%") | 
+            School.phone_number.ilike(f"%{search}%") |
+            School.email.ilike(f"%{search}%") |
+            School.website.ilike(f"%{search}%")
+        )
+    
     if(city):
         query = query.filter(School.city == city)
     if(state):
@@ -82,5 +80,5 @@ def filter():
         query = query.filter(School.tags.any(Tag.id.in_([tag.id for tag in tags])))
 
     results = query.all()
-
+    
     return render_template('search_results.html', results=results)

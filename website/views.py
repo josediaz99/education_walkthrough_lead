@@ -31,7 +31,22 @@ def home():
                 # lowGrade = district["lowGrade"]
                 # highGrade = district["highGrade"]
                 numberTotalSchools = district["numberTotalSchools"]
+            if(db.session.query(School.id).filter_by(nces_id=district["districtID"]).first() is None):
+                nces_id = district["districtID"]
+                name = district["districtName"]
+                street = district["street"]
+                city = district["city"]
+                state = district["state"]
+                zip_code = district["zip"]
+                phone_number = district["phone"]
+                website = district["url"]
+                # lowGrade = district["lowGrade"]
+                # highGrade = district["highGrade"]
+                numberTotalSchools = district["numberTotalSchools"]
 
+                new_school = School(nces_id=nces_id, name=name, street=street, city=city, state=state, zip_code=zip_code, phone_number=phone_number, website=website, numberTotalSchools=numberTotalSchools)
+                db.session.add(new_school)
+                db.session.commit()
                 new_school = School(nces_id=nces_id, name=name, street=street, city=city, state=state, zip_code=zip_code, phone_number=phone_number, website=website, numberTotalSchools=numberTotalSchools)
                 db.session.add(new_school)
                 db.session.commit()

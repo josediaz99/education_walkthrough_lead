@@ -2,7 +2,7 @@
 import re
 import asyncio
 from typing import List, Dict, Any, Tuple
-from urllib.parse import urlparse, quote_plus
+from urllib.parse import urlparse, quote_plus, unquote, parse_qs
 import random
 from playwright.async_api import async_playwright
 import subprocess
@@ -17,17 +17,23 @@ SEARCH_VARIANTS = [
 desired_docs = [
     r"\bdistrict improvement plan\b",
     r"\bstrategic plan\b",
-    r"\bimprovement plan\b"
+    r"\bimprovement plan\b",
+    r"\dip",
+    r"\bboard minutes\b",
+    r"\bschool board goals\b",
+    r"\bcsip\b",
+    r"\baccredidation self-study\b",
+    r"\bcurrent goals\b"
 ]
 
 
 
-MAX_SERP_PER_QUERY = 15     # keep this modest for speed
+MAX_SERP_PER_QUERY = 7     # keep this modest for speed
 TOP_N_RESULTS = 5           # final results per district
 VERIFY_TARGETS = True       # set this to false to skip verification step
 
 # --- Helpers ---------------------------------------------------------------
-def any_keyword(text: str) -> bool:
+def any_keyword(text: str) -> tuple [bool,str]:
     '''
     function takes in aomw twxt from the title, url, or description and returns if any of the the any of the plans are found in the title
     '''
@@ -37,6 +43,22 @@ def any_keyword(text: str) -> bool:
             return True
     # allow looser match (strategic + plan within string)
     return ("strategic" in t and "plan" in t) or ("improvement" in t and "plan" in t)
+
+def resolve_bing_redirect(url: str) -> str:
+    p = urlparse(url)
+    if p.netloc.lower().endswith("bing.com") and p.path.startswith("/ck/a"):
+        qs = parse_qs(p.query)
+        if "u" in qs and qs["u"]:
+            # sometimes Bing double-encodes; unquote twice if needed
+            target = unquote(qs["u"][0])
+            maybe_twice = unquote(target)
+            return maybe_twice if maybe_twice.startswith(("http://", "https://")) else target
+    return url
+
+def clean_host(u: str) -> str:
+    u = resolve_bing_redirect(u)
+    host = urlparse(u).netloc.lower()
+    return re.sub(r"^www\d?\.", "", host)
 
 def name_matches(text: str, name_aliases: List[str]) -> bool:
     """
@@ -53,16 +75,30 @@ def looks_like_pdf(url: str) -> bool:
     u = url.lower()
     return u.endswith(".pdf") or ".pdf" in u
 
+def guess_filename_from_url(url: str) -> str:
+    '''
+    function will parse through url to determine a name based on relevant text in the url
+    '''
+    path = urlparse(url).path
+    if not path:
+        return None
+    return unquote(path.split("/")[-1]) or None
 
 def guess_aliases(district_name: str) -> List[str]:
     """
-    Build a small alias set: full name, compressed name, 'SD <num>' if present, and number-only forms.
+    Build a small alias set: full name, compressed name, 'SD <num>' if present, 
+    number-only forms, and acronym+number forms.
     """
     name = district_name.strip()
     aliases = {name}
 
     # Drop common words to create a short alias
-    short = re.sub(r"\b(school|public|unified|community|consolidated|elementary|high|unit|district)\b", "", name, flags=re.I)
+    short = re.sub(
+        r"\b(school|public|unified|community|consolidated|elementary|high|unit|district|ccsd|usd|isd|cusd|cus|sd)\b",
+        "",
+        name,
+        flags=re.I
+    )
     short = re.sub(r"\s+", " ", short).strip()
     if short:
         aliases.add(short)
@@ -72,16 +108,24 @@ def guess_aliases(district_name: str) -> List[str]:
     for d in digits:
         aliases.add(f"sd {d}")
         aliases.add(f"district {d}")
-        aliases.add(d)
-
-    # Common “DIST <num>” / “D <num>” styles
-    for d in digits:
         aliases.add(f"d {d}")
         aliases.add(f"dist {d}")
+        aliases.add(d)
+
+    # Acronym + number: Sprint Valley CCSD 99 → sv99
+    parts = [w for w in re.split(r"\s+", short) if w.isalpha()]
+    if parts:
+        acronym = "".join(p[0].lower() for p in parts)
+        if digits:
+            for d in digits:
+                aliases.add(acronym + d)
+        else:
+            aliases.add(acronym)
 
     # Lowercase versions
     aliases_lower = {a.lower() for a in aliases}
     return list(aliases_lower)
+
 
 # --- search plans through bing  --------------------------------------------------
 
@@ -135,57 +179,61 @@ def score_candidate(item: Dict, name_aliases: List[str]) -> Tuple:
     title = item.get("title", "")
     url = item.get("url", "")
     snippet = item.get("snippet", "")
-    host = host_from_url(url)
+    host = clean_host(url)
+   
+    irrelevant_links = ["survey","facebook.com", "twitter.com", "x.com", "youtube.com", "instagram.com", "calendar.google.com","isbe.net","reportcard"]
 
     score = 0
     reasons = []
+
+    for unwanted in irrelevant_links:
+        if unwanted in (host + url +title):
+            return 0, f"links to {unwanted}"
+
     print("Scoring candidate:", title, url, snippet, "\n")
     # File type
     if looks_like_pdf(url):
         score += 3
         reasons.append("PDF")
-
-    # Domain match or allowed off-domain with name match
-    '''
-    if host == district_domain:
-        score += 2
-        reasons.append("domain match")
-    '''
     
-    if name_matches(title + " " + url + " " + snippet, name_aliases):
+    if name_matches(title + " " + url, name_aliases):
         for name in name_aliases:
-            if name in host:
+            if name in title or name in url or name in snippet:
                 score += 1
-                reasons.append("alias name " + name+ " in found")
+                reasons.append("alias name " + name + " in"+ host)
 
-    # Keyword checks
+    # checks if any of the plans we are searching for are listed in any of the link,title,description/snippet
     if any_keyword(title):
         score += 3
-        reasons.append("title has keywords")
+        reasons.append("title contains desired document")
     if any_keyword(url):
-        score += 1
-        reasons.append("url has keywords")
+        score += 2
+        reasons.append("url contains desired document")
     if any_keyword(snippet):
         score += 1
-        reasons.append("snippet has keywords")
+        reasons.append("snippet contains desired document")
 
-    # Name matches
-    if name_matches(title, name_aliases) or name_matches(url, name_aliases):
+    # searching for references to the school we are searching for 
+    '''if name_matches(title, name_aliases) or name_matches(url, name_aliases):
         score += 1
-        reasons.append("name match")
+        reasons.append("aliases match")
+    else: # we want to make sure we are not getting links which dont contain a reference to the school we are searcing for
+        score = 0
+        reasons.append("aliases not found")'''
 
-    # Penalize social media / calendar links     
-    if any(bad in host for bad in ("survey","facebook.com", "twitter.com", "x.com", "youtube.com", "instagram.com", "calendar.google.com")):
-        score -= 5
-        reasons.append("social-media/calendar")
-
+    # Penalize social media / calendar links
+    
+    
     return score, ", ".join(reasons)
 
 # --- Quick verification ----------------------------------------------------
 
 async def quick_verify(playwright_request_ctx, url: str) -> Dict[str, Any]:
     """
-    HEAD for PDFs; shallow GET for HTML; returns {'ok': bool, 'content_type': str, 'title': str}
+    this functions takes in the url and some context we need to verify get the information and we return some information for our candidates 
+    this function also generates a title for the documents when there is none to be retrieved
+    return
+    info: {ok: bool, content_type: (ex. pdf/html). title}
     """
     info = {"ok": False, "content_type": None, "title": None}
 
@@ -195,8 +243,10 @@ async def quick_verify(playwright_request_ctx, url: str) -> Dict[str, Any]:
         ct = (resp.headers.get("content-type") or "").lower()
         info["content_type"] = ct
 
+        print("checking for status for ",url )
         if resp.status == 200:
             info["ok"] = True
+            print('status ok')
 
         # If content-type says HTML, do a tiny GET to extract <title>
         if "text/html" in ct or (ct == "" and not looks_like_pdf(url)):
@@ -209,6 +259,20 @@ async def quick_verify(playwright_request_ctx, url: str) -> Dict[str, Any]:
                     title_text = re.sub(r"\s+", " ", m.group(1)).strip()
                     info["title"] = title_text
                     info["ok"] = True
+        
+        # If it's a PDF
+        if "/pdf" in ct or looks_like_pdf(url):
+            # Try to get filename from headers
+            disp = resp.headers.get("content-disposition", "")
+            m = re.search(r'filename="?([^"]+)"?', disp, flags=re.I)
+            if m:
+                info["title"] = m.group(1)
+            else:
+                # fallback: filename from URL path
+                info["title"] = guess_filename_from_url(url)
+
+            info["ok"] = resp.status == 200
+
         return info
     except Exception:
         return info
@@ -217,6 +281,7 @@ async def quick_verify(playwright_request_ctx, url: str) -> Dict[str, Any]:
 
 async def search_dip_for_district(district_name: str, state = None) -> List[Dict]:
     """
+    this function queries for district documents and returns a list of possible candidates in a list of dictionaries ordered by the score
     Returns: list of dicts:
       {
         "title": str,
@@ -258,7 +323,6 @@ async def search_dip_for_district(district_name: str, state = None) -> List[Dict
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.119 Safari/537.36 Edg/124.0.2478.67",
         ]
         
-
         seen_urls = set()
         candidates: List[Dict[str, Any]] = []
 
@@ -294,11 +358,11 @@ async def search_dip_for_district(district_name: str, state = None) -> List[Dict
                         continue
                     seen_urls.add(url)
 
-                    # search for keywords in title/url/snippet
-                    if not (any_keyword(item["title"]) or any_keyword(item["url"]) or any_keyword(item["snippet"])):
+                    # search for desired documents in title/url/snippet
+                    if not (any_keyword(item["title"]) or any_keyword(item["url"]) or any_keyword(item["snippet"]) or name_matches(item["title"],name_aliases) or name_matches(item["url"],name_aliases) or name_matches(item["snippet"],name_aliases)):
                         continue
 
-                    #add some contect to each link
+                    #add some context to each link
                     host = host_from_url(url)
                     if name_matches(item["title"] + " " + item["url"] + " " + item["snippet"], name_aliases) :
                         
@@ -316,7 +380,8 @@ async def search_dip_for_district(district_name: str, state = None) -> List[Dict
                             "verified": False,
                             "verified_title": None,
                             "verified_content_type": None,
-                            'req_ctx': req_ctx
+                            'req_ctx': req_ctx,
+                            'snippet': item["snippet"]
                         })
                         await browser.close()
                         await req_ctx.dispose()
@@ -354,34 +419,8 @@ async def search_dip_for_district(district_name: str, state = None) -> List[Dict
         print(f"Found {len(results)} candidates")
         
 
-        return results
+        return results[:15]
 
-#---- verify through prompt -------------------------------------------------
-def verify_with_prompt(district_name: str, candidate: Dict, state :str ) -> bool:
-    """
-    Uses a prompt to verify if the candidate is indeed a district improvement plan for the given district.
-    This is a placeholder function and should be implemented with an actual LLM call.
-    """
-    title = candidate.get("title", "")
-    url = candidate.get("url", "")
-    snippet = candidate.get("snippet", "")
-
-    prompt = f"""
-    Given the following information about a school district and a document, determine if the document is indeed a district improvement plan for the specified district.
-
-    District Name: {district_name}
-    District State: {state}
-
-    Document Title: {title}
-    Document URL: {url}
-    Document Snippet: {snippet}
-
-    Does this document appear to be a district improvement plan for the specified district? Answer "yes" or "no" and provide a brief explanation.
-    """
-
-    response = prompt_response(prompt)
-
-def prompt_response(prompt: str) -> str:
     """
     usses ollama llm to create a response
     """
@@ -398,7 +437,7 @@ if __name__ == "__main__":
 
         print('searching for district: \n')
         print(district_name + "\n")
-        hits = await search_dip_for_district(district_name)
+        hits = await search_dip_for_district(district_name,state="Illinois")
         for i, h in enumerate(hits, 1):
             print(f"{i}. [{h['score']}] {h['title']}\n   {h['url']}\n   why: {h['why']}\n   verified={h['verified']} type={h['verified_content_type']}\n")
 

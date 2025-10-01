@@ -1,5 +1,4 @@
 from flask import Blueprint, render_template, jsonify
-from flask_login import login_required, current_user
 from .models import School, Tag
 from flask import request, flash, abort
 from . import db

@@ -28,13 +28,13 @@ class School(db.Model):
     street = db.Column(db.String(150))
     lowGrade = db.Column(db.String(10))
     highGrade = db.Column(db.String(10))
-    
+
     # decided to link to the school digger provided link which contains a map with schools around the district
     #lat = db.column(db.float) 
     #long = db.column(db.float)
 
     #-----------------relationships-------------------------------------------
-    documents = db.relationship('Document', back_populate='school', cascade="all, delete-orphan")
+    documents = db.relationship('Document', back_populates='school', cascade="all, delete-orphan")
     tags = db.relationship('Tag', secondary=school_tag, backref='schools')
     
 

@@ -3,3 +3,4 @@ instance
 .env
 __pycache__
 website/__pycache__
+test.py

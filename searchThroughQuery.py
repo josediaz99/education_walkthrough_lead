@@ -1,19 +1,19 @@
-# search_improvement_plans.py
 import re
 import asyncio
 from typing import List, Dict, Any, Tuple
 from urllib.parse import urlparse, quote_plus, unquote, parse_qs
 import random
 from playwright.async_api import async_playwright
-import subprocess
-# --- Tunables --------------------------------------------------------------
 
-SEARCH_VARIANTS = [
+# --- Tunables --------------------------------------------------------------
+#seach docs must be written in lower case, number of docs is directly tied to the number of bing queries
+SEARCH_DOCS = [
     'district improvement plan',
     'strategic plan',
     'improvement plan'
 ]
 
+#desired docs must be written in lower case exactly how they are expected to be found
 desired_docs = [
     r"\bdistrict improvement plan\b",
     r"\bstrategic plan\b",
@@ -26,18 +26,16 @@ desired_docs = [
     r"\bcurrent goals\b"
 ]
 
-
-
-MAX_SERP_PER_QUERY = 7     # keep this modest for speed
-TOP_N_RESULTS = 5           # final results per district
-VERIFY_TARGETS = True       # set this to false to skip verification step
+MAX_SERP_PER_QUERY = 5      # higher for more results / lower if the results are too random  (number of candidates for each of our queries in variants)
+TOP_N_RESULTS = 5           # the number of links or candidates that will be returned
 
 # --- Helpers ---------------------------------------------------------------
-def any_keyword(text: str) -> tuple [bool,str]:
+def any_keyword(text: str) -> bool:
     '''
     function takes in aomw twxt from the title, url, or description and returns if any of the the any of the plans are found in the title
     '''
-    t = (text or "").lower()
+    t = (text).lower()
+    # will look for document name exactly as written
     for desired_doc in desired_docs:
         if re.search(desired_doc, t):
             return True
@@ -103,13 +101,11 @@ def guess_aliases(district_name: str) -> List[str]:
     if short:
         aliases.add(short)
 
-    # Pull digits (district number) if exist
+    # gets shortened version of the district number
     digits = re.findall(r"\b(\d{1,4})\b", name)
     for d in digits:
         aliases.add(f"sd {d}")
         aliases.add(f"district {d}")
-        aliases.add(f"d {d}")
-        aliases.add(f"dist {d}")
         aliases.add(d)
 
     # Acronym + number: Sprint Valley CCSD 99 → sv99
@@ -122,15 +118,24 @@ def guess_aliases(district_name: str) -> List[str]:
         else:
             aliases.add(acronym)
 
-    # Lowercase versions
+    #get a version which only has the name
+    no_num = re.sub(r"\b\d{1,4}\b", "", name)
+    no_num = re.sub(r"\s+", " ", no_num).strip()
+    if no_num:
+        aliases.add(no_num)
+
+    # returning Lowercase versions
     aliases_lower = {a.lower() for a in aliases}
     return list(aliases_lower)
+
 
 
 # --- search plans through bing  --------------------------------------------------
 
 async def fetch_bing_results(page, query: str, max_results: int = MAX_SERP_PER_QUERY) -> List[Dict[str, str]]:
     """
+    this function queries and stores the number links the user wants to take from each page
+
     Returns a list of {title, url, snippet, query}
     """
     print("fetching bing results for query:")
@@ -187,7 +192,7 @@ def score_candidate(item: Dict, name_aliases: List[str]) -> Tuple:
     reasons = []
 
     for unwanted in irrelevant_links:
-        if unwanted in (host + url +title):
+        if unwanted in (host + url +title + snippet):
             return 0, f"links to {unwanted}"
 
     print("Scoring candidate:", title, url, snippet, "\n")
@@ -195,7 +200,8 @@ def score_candidate(item: Dict, name_aliases: List[str]) -> Tuple:
     if looks_like_pdf(url):
         score += 3
         reasons.append("PDF")
-    
+
+    # searching for references to the school we are searching for 
     if name_matches(title + " " + url, name_aliases):
         for name in name_aliases:
             if name in title or name in url or name in snippet:
@@ -213,17 +219,6 @@ def score_candidate(item: Dict, name_aliases: List[str]) -> Tuple:
         score += 1
         reasons.append("snippet contains desired document")
 
-    # searching for references to the school we are searching for 
-    '''if name_matches(title, name_aliases) or name_matches(url, name_aliases):
-        score += 1
-        reasons.append("aliases match")
-    else: # we want to make sure we are not getting links which dont contain a reference to the school we are searcing for
-        score = 0
-        reasons.append("aliases not found")'''
-
-    # Penalize social media / calendar links
-    
-    
     return score, ", ".join(reasons)
 
 # --- Quick verification ----------------------------------------------------
@@ -358,11 +353,11 @@ async def search_dip_for_district(district_name: str, state = None) -> List[Dict
                         continue
                     seen_urls.add(url)
 
-                    # search for desired documents in title/url/snippet
+                    # search for desired documents and alias names in title,url,snippet
                     if not (any_keyword(item["title"]) or any_keyword(item["url"]) or any_keyword(item["snippet"]) or name_matches(item["title"],name_aliases) or name_matches(item["url"],name_aliases) or name_matches(item["snippet"],name_aliases)):
                         continue
 
-                    #add some context to each link
+                    
                     host = host_from_url(url)
                     if name_matches(item["title"] + " " + item["url"] + " " + item["snippet"], name_aliases) :
                         
@@ -371,15 +366,13 @@ async def search_dip_for_district(district_name: str, state = None) -> List[Dict
                             continue
                         candidates.append({
                             "title": item["title"].strip(),
-                            "url": url,
+                            "url": item["url"],
                             "host": host,
                             "filetype": "pdf" if looks_like_pdf(url) else ("html" if url.lower().endswith((".htm", ".html", "/")) else "unknown"),
                             "score": sc,
                             "why": why,
-                            "found_by_query": item["query"],
+                            "found_by_query": q,
                             "verified": False,
-                            "verified_title": None,
-                            "verified_content_type": None,
                             'req_ctx': req_ctx,
                             'snippet': item["snippet"]
                         })
@@ -388,7 +381,7 @@ async def search_dip_for_district(district_name: str, state = None) -> List[Dict
 
         
         #get more results if pdf list is too short
-        for v in SEARCH_VARIANTS:   
+        for v in SEARCH_DOCS:   
             await do_round(v)
 
         # De-dup by URL and keep best score
@@ -400,7 +393,7 @@ async def search_dip_for_district(district_name: str, state = None) -> List[Dict
 
         results = list(best_by_url.values())
         # Quick verification step
-        if VERIFY_TARGETS and results:
+        if results:
             tasks = [quick_verify(r['req_ctx'], r["url"]) for r in results]
             verifs = await asyncio.gather(*tasks, return_exceptions=True)
             for r, info in zip(results, verifs):
@@ -419,11 +412,8 @@ async def search_dip_for_district(district_name: str, state = None) -> List[Dict
         print(f"Found {len(results)} candidates")
         
 
-        return results[:15]
+        return results[:TOP_N_RESULTS]# change this with the 
 
-    """
-    usses ollama llm to create a response
-    """
     
 # --- Example usage ---------------------------------------------------------
 

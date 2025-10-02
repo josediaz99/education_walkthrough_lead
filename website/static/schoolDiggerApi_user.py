@@ -7,9 +7,6 @@ import os
 #------------we will make calls only to the too which will return mutiple school districts-------------------------
 url = "https://api.schooldigger.com/v2.3/districts"
 
-#------------list of states in the us-------------------------
-states = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]
-
 #------------load the api key and app id from the .env file-------------------------
 load_dotenv()
 
@@ -69,8 +66,6 @@ def get_school_districts(state) -> list[dict]:
             filtered_row["highGrade"] = r["highGrade"]
             stateDistricts.append(filtered_row)
             
-            
-
         if len(rows) < max_page:
             print("All data retrieved")
             break
@@ -80,6 +75,10 @@ def get_school_districts(state) -> list[dict]:
     
 
 if __name__ == "__main__":
+
+    #------------list of states in the us-------------------------
+    states = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]
+
     import random 
     random_state = random.choice(states)
     

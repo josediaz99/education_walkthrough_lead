@@ -1,9 +1,9 @@
-from flask import Blueprint, render_template, jsonify
-from .models import School, Tag
-from flask import request, flash, abort
+from flask import Blueprint, render_template
+from .models import School
+from flask import request
 from . import db
 from .static.schoolDiggerApi_user import get_school_districts
-import json
+
 
 
 views = Blueprint('views', __name__)

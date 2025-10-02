@@ -28,17 +28,26 @@ class School(db.Model):
     street = db.Column(db.String(150))
     lowGrade = db.Column(db.String(10))
     highGrade = db.Column(db.String(10))
-    documents = db.relationship('Document')
-    tags = db.relationship('Tag', secondary=school_tag, backref='schools')
-    #lat = db.column(db.loat)
+    
+    # decided to link to the school digger provided link which contains a map with schools around the district
+    #lat = db.column(db.float) 
     #long = db.column(db.float)
+
+    #-----------------relationships-------------------------------------------
+    documents = db.relationship('Document', back_populate='school', cascade="all, delete-orphan")
+    tags = db.relationship('Tag', secondary=school_tag, backref='schools')
+    
 
 class Document(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(150))
     url = db.Column(db.String(150))
     upload_date = db.Column(db.DateTime(timezone=True), default=func.now())
-    school_id = db.Column(db.Integer, db.ForeignKey('school.id'))
+    school_id = db.Column(db.Integer, db.ForeignKey('school.id'), nullable = False)
+    school = db.relationship('School', back_populates='documents') # this lets us access the district information for the document
+    reasons = db.Column(db.String(150))
+    score = db.Column(db.Integer)
+    ranking = db.Column(db.Integer)
 
 class Tag(db.Model):
     id = db.Column(db.Integer, primary_key=True)

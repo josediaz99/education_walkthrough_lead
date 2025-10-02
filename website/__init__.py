@@ -7,7 +7,7 @@ DB_NAME = "database.db"
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'chat is ts tuff or naw'
+    app.config['SECRET_KEY'] = 'set_to_own_secret_key' # change to personal secret key
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
     db.init_app(app)
 

@@ -11,3 +11,4 @@ requests
 json
 dotenv
 os
+flask-migrate

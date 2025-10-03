@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Update Data{% endblock %}
+{% block content %}
+<div class="mb-3">
+        <a href="{{ url_for('views.home') }}" class="btn btn-secondary">
+            <i class="fa fa-arrow-left"></i> Back to Search
+        </a>
+    </div>
+<div class="row">
+  <div class="col-md-4 mb-4">
+    <div class="card h-100">
+      <div class="card-header"><h4 class="mb-0">1) Update Districts</h4></div>
+      <div class="card-body">
+        <p class="text-muted">Refresh district info for all 50 states (upsert).</p>
+        <form method="post" action="{{ url_for('views.update_districts') }}">
+          <input type="hidden" name="action" value="update_schools">
+          <button class="btn btn-primary" type="submit">Run Update</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 mb-4">
+    <div class="card h-100">
+      <div class="card-header"><h4 class="mb-0">2) Analyze All Districts</h4></div>
+      <div class="card-body">
+        <p class="text-muted">Find and store ranked document candidates for every district.</p>
+        <form method="post" action="{{ url_for('views.update_districts') }}">
+          <input type="hidden" name="action" value="analyze_all">
+          <button class="btn btn-primary" type="submit">Run Analysis</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 mb-4">
+    <div class="card h-100">
+      <div class="card-header"><h4 class="mb-0">3) Analyze Missing Only</h4></div>
+      <div class="card-body">
+        <p class="text-muted">Only districts without any stored documents.</p>
+        <form method="post" action="{{ url_for('views.update_districts') }}">
+          <input type="hidden" name="action" value="analyze_missing">
+          <button class="btn btn-primary" type="submit">Run Analysis (Missing)</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

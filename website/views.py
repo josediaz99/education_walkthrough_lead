@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, flash, url_for, redirect
 from .models import db,School
-from sqlalchemy import selectinload
+from sqlalchemy.orm import selectinload
 from .static.schoolDiggerApi_user import get_school_districts
+from .static.searchThroughQuery import search_dip_for_district
 
 views = Blueprint('views', __name__)
 
@@ -11,9 +12,9 @@ STATES = [
     "HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
     "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
     "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
-    "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
-] 
-#---------------------- helper methods ---------------------------------------------
+    "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]
+
+#------------------------------ helper methods ---------------------------------------------
 def get_district_data(d):
     """gets district data from what is available by the school digger api and returns a dictionary of district info"""
     return dict(
@@ -50,12 +51,14 @@ def update_all_states():
     Upsert pass for all 50 states.
     Returns (added, updated) counts.
     """
-    # cache existing by nces for O(1) lookups
+    #--------------------------cache existing by nces for O(1) lookups----------------------
+
     existing = {s.nces_id: s for s in School.query.all()}
     added, updated = 0, 0
+    #---------- check how we are adding to the database when it needs to be updated ---------
 
     for state in STATES:
-        for d in get_school_districts(st):
+        for d in get_school_districts(state):
             nces = d.get("districtID")
             if not nces:
                 continue
@@ -77,43 +80,31 @@ def update_all_states():
 
     db.session.commit()
     return added, updated
-#---------------------- setup page to download any schools which need to be added
+
+#---------------------- setup page to download any schools which need to be added -------------
+
 @views.route('/', methods=['GET', 'POST'])
 def home():
+    initialized = db.session.query(School.id).limit(1).scalar() is not None
     if request.method == 'POST':
-        #build a set of nces ids which have already been seen
-        existing = {n for (n,) in db.session.query(School.nces_id).all() if n}
-        added = 0
+        if initialized:
+            flash("District already added.","info")
+            return redirect(url_for('views.update_districts'))
+        added = populate_all_states()
+        flash(f" Added {added} districts from all states", "success")
+        return redirect(url_for('views.home'))
 
-        #going through each state and entering them as a school to the database
-        for state in STATES:
-            districts = get_school_districts(state=state)
-            for district in districts:
-                nces_id = district.get("districtID")
-                if not nces_id or nces_id in existing:
-                    continue
+    schools = School.query.order_by(School.name.asc()).all() if initialized else []
+    return render_template("home.html", schools=schools, initialized=initialized)
 
-                school = School(
-                nces_id = nces_id,
-                name = district["districtName"],
-                street = district["street"],
-                city = district["city"],
-                state = district["state"],
-                zip_code = district["zip"],
-                phone_number = district["phone"],
-                website = district["url"],
-                email = None,
-                lowGrade = district["lowGrade"],
-                highGrade = district["highGrade"],
-                numberTotalSchools = district["numberTotalSchools"]
-                )
-            db.session.add(school)
-            existing.add(nces_id)
-            added =+ 1
-    db.session.commit()
-    #let th
-    flash(f"Populated/updated districtfrom all 50 states. added {added} districts", "success")
-    return render_template("home.html", schools=School.query.all())
+
+@views.route('/districts/update', methods=['GET', 'POST'])
+def update_districts():
+    # -------------------------------- update district --------------------
+    # -------------------------- gather documents and analyze -------------
+    # --------------------------------------- --------------------------
+    return render_template("update.html")
+
 
 @views.route('/district/<int:district_id>')
 def district_detail(district_id):
@@ -121,21 +112,31 @@ def district_detail(district_id):
     school = School.query.get_or_404(district_id)
     return render_template("district_detail.html", school=school)
 
+from sqlalchemy import or_
+
 @views.route('/search')
 def search():
-    query = request.args.get("query")
-    if(query != ""):
-        results = School.query.filter(
-            School.name.ilike(f"%{query}%") | 
-            School.street.ilike(f"%{query}%") | 
-            School.city.ilike(f"%{query}%") | 
-            School.state.ilike(f"%{query}%") | 
-            School.zip_code.ilike(f"%{query}%") |
-            School.phone_number.ilike(f"%{query}%") |
-            School.email.ilike(f"%{query}%") |
-            School.website.ilike(f"%{query}%")
-        ).all()
+    q = (request.args.get("query") or "").strip()
+
+    if q:
+        like = f"%{q}%"
+        results = (
+            School.query.filter(or_(
+                School.name.ilike(like),
+                School.street.ilike(like),
+                School.city.ilike(like),
+                School.state.ilike(like),
+                School.zip_code.ilike(like),
+                School.phone_number.ilike(like),
+                School.email.ilike(like),
+                School.website.ilike(like),
+            ))
+            .order_by(School.name.asc())
+            .all()
+        )
     else:
-        results = School.query.all()
-    print(results)
-    return render_template('search_results.html', results=results)
+        results = School.query.order_by(School.name.asc()).all()
+
+    return render_template('search_results.html', results=results, query=q)
+
+

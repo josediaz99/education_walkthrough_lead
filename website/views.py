@@ -11,11 +11,7 @@ views = Blueprint('views', __name__)
 
 #---------------------- state codes for school digger api ----------------------------
 STATES = [
-    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA",
-    "HI","ID","IL","IN","IA","KS","KY","LA","ME","MD",
-    "MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC",
-    "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]
+    "AL"]
 
 #------------------------------ helper methods ---------------------------------------------
 def get_district_data(d):
@@ -108,7 +104,7 @@ async def search_and_store_docs(school):
         return added
     except Exception as e:
         print(f"Error searching for documents for {school.name}: {str(e)}")
-        return None
+        return 0
 
 def get_tags(school,doc):
     """

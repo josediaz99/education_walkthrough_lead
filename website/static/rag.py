@@ -14,7 +14,7 @@ import hashlib
 import itertools
 import uuid
 from langchain_classic.retrievers import MultiVectorRetriever
-from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_classic.storage import InMemoryStore
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
@@ -30,7 +30,7 @@ s3_client = boto3.client("s3", region_name="us-east-2", config=Config(signature_
 
 vectorstore = Chroma(collection_name="summaries", embedding_function=OpenAIEmbeddings())
 
-store = InMemoryVectorStore()
+store = InMemoryStore()
 id_key = "doc_id"
 
 retriever = MultiVectorRetriever(
@@ -194,11 +194,7 @@ def get_unique_docs(docs_lst):
 def parse_docs(docs):
     retrieved_images, retrieved_texts = [], []
 
-    print(type(docs))
-    print(type(docs[0]))
-
     for doc in docs:
-        # pp.pprint(doc)
         try:
             base64.b64decode(doc)
             retrieved_images.append(doc)
@@ -260,15 +256,19 @@ def generate_image_summaries(image_urls):
     return image_summaries
 
 def store_elements(texts, images, image_summaries):
-    text_ids = [str(uuid.uuid4()) for _ in texts]
-    summary_texts = [Document(page_content=text.text, metadata={id_key: text_ids[i]}) for i, text in enumerate(texts)]
-    retriever.vectorstore.add_documents(summary_texts)
-    retriever.docstore.mset(list(zip(text_ids, texts)))
+    if(len(texts) > 0):
+        print("Storing text elements")
+        text_ids = [str(uuid.uuid4()) for _ in texts]
+        summary_texts = [Document(page_content=text.text, metadata={id_key: text_ids[i]}) for i, text in enumerate(texts)]
+        retriever.vectorstore.add_documents(summary_texts)
+        retriever.docstore.mset(list(zip(text_ids, texts)))
 
-    image_ids = [str(uuid.uuid4()) for _ in images]
-    summary_images = [Document(page_content=img, metadata={id_key: image_ids[i]}) for i, img in enumerate(image_summaries)]
-    retriever.vectorstore.add_documents(summary_images)
-    retriever.docstore.mset(list(zip(image_ids, images)))
+    if(len(images) > 0):
+        print("Storing image elements")
+        image_ids = [str(uuid.uuid4()) for _ in images]
+        summary_images = [Document(page_content=img, metadata={id_key: image_ids[i]}) for i, img in enumerate(image_summaries)]
+        retriever.vectorstore.add_documents(summary_images)
+        retriever.docstore.mset(list(zip(image_ids, images)))
     
 structured_chain_with_sources = {
     "context": generate_queries | retriever.map() | RunnableLambda(get_unique_docs) | RunnableLambda(parse_docs),
@@ -281,8 +281,12 @@ structured_chain_with_sources = {
 )
 
 def analyze_doc(url):
+    print(f"Analyzing {url}")
     # Extract document
     texts, images, image_urls = extract(url)
+
+    print(f"Texts: {texts}")
+    print(f"Image URLs: {image_urls}")
 
     # Summarize images/tables
     image_summaries = generate_image_summaries(image_urls)
@@ -295,59 +299,67 @@ def analyze_doc(url):
     responses = {}
 
     frequency_response = structured_chain_with_sources.invoke("Are there mentions of low classroom observation/walkthrough frequency or increasing classroom observation/walkthrough frequency")
-    if(frequency_response['context']['response'].is_affirmative):
+    print(f"Low Frequency:")
+    print(frequency_response['response'].answer)
+    for text in frequency_response['context']['texts']:
+        print(text)
+    if(frequency_response['response'].is_affirmative):
         responses['low_frequency'] = {
             "tag": "Low Frequency",
-            "explanation": frequency_response['context']['response'].answer
+            "explanation": frequency_response['response'].answer
         }
     
     feedback_response = structured_chain_with_sources.invoke("Are there mentions of slow feedback from classroom observations/walkthroughs or a need to increase walkthrough/observation feedback response time?")
-    if(feedback_response['context']['response'].is_affirmative):
+    print(f"Slow Feedback: {feedback_response['response'].answer}")
+    if(feedback_response['response'].is_affirmative):
         responses['slow_feedback'] = {
             "tag": "Slow Feedback",
-            "explanation": feedback_response['context']['response'].answer
+            "explanation": feedback_response['response'].answer
         }
 
     data_response = structured_chain_with_sources.invoke("Are there mentions of implementing data-driven improvement or evaluations?")
-    if(data_response['context']['response'].is_affirmative):
+    print(f"Data Driven Improvement: {data_response['response'].answer}")
+    if(data_response['response'].is_affirmative):
         responses['data_driven'] = {
             "tag": "Data Driven Improvement",
-            "explanation": data_response['context']['response'].answer
+            "explanation": data_response['response'].answer
         }
 
     pd_response = structured_chain_with_sources.invoke("Are there mentions of professional development?")
-    if(pd_response['context']['response'].is_affirmative):
+    if(pd_response['response'].is_affirmative):
         responses['professional_development'] = {
             "tag": "Professional Development",
-            "explanation": pd_response['context']['response'].answer
+            "explanation": pd_response['response'].answer
         }
 
     avid_response = structured_chain_with_sources.invoke("Are there mentions of being Advancement Via Individual Determination (AVID) certified or seeking AVID certification?")
-    if(avid_response['context']['response'].is_affirmative):
+    if(avid_response['response'].is_affirmative):
         responses['avid'] = {
             "tag": "AVID",
-            "explanation": avid_response['context']['response'].answer
+            "explanation": avid_response['response'].answer
         }
 
     ap_response = structured_chain_with_sources.invoke("Are there mentions of being Advanced Placement (AP) certified or seeking AP certification?")
-    if(ap_response['context']['response'].is_affirmative):
+    if(ap_response['response'].is_affirmative):
         responses['ap'] = {
             "tag": "AP",
-            "explanation": ap_response['context']['response'].answer
+            "explanation": ap_response['response'].answer
         }
 
     ib_response = structured_chain_with_sources.invoke("Are there mentions of being International Baccalaureate (IB) certified or seeking IB certification?")
-    if(ib_response['context']['response'].is_affirmative):
+    if(ib_response['response'].is_affirmative):
         responses['ib'] = {
             "tag": "IB",
-            "explanation": ib_response['context']['response'].answer
+            "explanation": ib_response['response'].answer
         }
 
     grant_response = structured_chain_with_sources.invoke("Are there mentions of being awarded an instruction-related grant or seeking instruction-related grants?")
-    if(grant_response['context']['response'].is_affirmative):
+    if(grant_response['response'].is_affirmative):
         responses['instruction_related_grant'] = {
             "tag": "Instruction Related Grant",
-            "explanation": grant_response['context']['response'].answer
+            "explanation": grant_response['response'].answer
         }
+
+    print(responses)
 
     return responses

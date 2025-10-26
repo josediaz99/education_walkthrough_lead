@@ -38,7 +38,7 @@ def bootstrap_db(app):
 
         # 3) Seed tags idempotently
         from .models import Tag, db as _db
-        names = ["Professional Development", "IB", "AP", "AVID"]
+        names = ["Professional Development", "IB", "AP", "AVID", "Instruction Related Grant", "Data Driven Improvement", "Slow Feedback", "Low Frequency"]
         existing = {t.name for t in Tag.query.filter(Tag.name.in_(names)).all()}
         for n in names:
             if n not in existing:

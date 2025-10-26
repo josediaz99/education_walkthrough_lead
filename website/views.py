@@ -4,6 +4,7 @@ from .models import db,School,Document,Tag
 from sqlalchemy.orm import selectinload
 from .static.schoolDiggerApi_user import get_school_districts
 from .static.searchThroughQuery import search_dip_for_district
+from .static.rag import analyze_doc
 from sqlalchemy import or_
 
 views = Blueprint('views', __name__)
@@ -114,13 +115,22 @@ def get_tags(school,doc):
     this function should be used to take the top document and performs analysis to return tags to be inserter into the database
     this function will be inside fo a loop which will have school and the top document available
     """
-    pass
+    responses = analyze_doc(doc.url)
+
+    tags = []
+
+    for response in responses.values():
+        new_tag = Tag.query.filter_by(name=response["name"]).first()
+        tags.append(new_tag)
+
+    return tags
+
 def store_tag(school, tags):
     """
     this function should be used to take the tags which were found by the rag system to be stored in the database
     this function will also be in a loop which will have the school and tags available
     """
-    pass
+    school.tags = tags
 
 #---------------------- home page for displayed information -------------
 

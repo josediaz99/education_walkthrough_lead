@@ -12,3 +12,7 @@ json
 dotenv
 os
 flask-migrate
+unstructured[all-docs]
+langchain
+langchain-openai
+langchain-chroma
